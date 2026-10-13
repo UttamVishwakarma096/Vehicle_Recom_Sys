@@ -1,0 +1,241 @@
+metadata:
+  generated: "2026-10-10"
+  source_tasks: "docs/11_IMPLEMENTATION_PLAN.md#Milestone 2"
+  last_updated: "2026-10-10"
+
+summary:
+  total_tasks: 5
+  completed_tasks: 5
+  in_progress_tasks: 0
+  pending_tasks: 0
+  completion_percentage: 100.0
+
+tasks:
+  - task_id: "M2-01"
+    description: "Validate per-service HOST/PORT and handle startup and shutdown"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "services/identity-user/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Validated service config and graceful shutdown handling"
+        - file: "services/identity-user/src/server.js"
+          changes:
+            - change_type: "modified"
+              description: "Validated startup config, lifecycle logs, shutdown hooks"
+        - file: "services/vehicle-catalog/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Service-owned config and shutdown implementation"
+        - file: "services/vehicle-catalog/src/server.js"
+          changes:
+            - change_type: "modified"
+              description: "Validated startup config, lifecycle logs, shutdown hooks"
+        - file: "services/recommendation/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Service-owned config and shutdown implementation"
+        - file: "services/recommendation/src/server.js"
+          changes:
+            - change_type: "modified"
+              description: "Validated startup config, lifecycle logs, shutdown hooks"
+    verification:
+      build_passed: true
+      test_results:
+        command: "npm test"
+        passed: 24
+        failed: 0
+        skipped: 0
+        failures: []
+      notes: "Each service rejects PORT=invalid at startup with exit code 1."
+    upstream_trace:
+      plan_item: "Milestone 2"
+      requirements: ["NFR-OBS-01"]
+      full_trace: "NFR-OBS-01 -> Milestone 2 -> M2-01 -> per-service config/server"
+
+  - task_id: "M2-02"
+    description: "Expose service health, liveness, and readiness endpoints"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "services/identity-user/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "GET /health, /health/live, /health/ready"
+        - file: "services/vehicle-catalog/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "GET /health, /health/live, /health/ready"
+        - file: "services/recommendation/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "GET /health, /health/live, /health/ready"
+        - file: "services/identity-user/test/app.test.js"
+          changes:
+            - change_type: "modified"
+              description: "Health response and correlation header tests"
+        - file: "services/vehicle-catalog/test/app.test.js"
+          changes:
+            - change_type: "modified"
+              description: "Health response and correlation header tests"
+        - file: "services/recommendation/test/app.test.js"
+          changes:
+            - change_type: "modified"
+              description: "Health response and correlation header tests"
+    verification:
+      build_passed: true
+      test_results:
+        command: "npm test"
+        passed: 24
+        failed: 0
+        skipped: 0
+        failures: []
+      notes: "Runtime probes returned HTTP 200 for health/readiness and root on all services."
+    upstream_trace:
+      plan_item: "Milestone 2"
+      requirements: ["NFR-OBS-01"]
+      full_trace: "NFR-OBS-01 -> Milestone 2 -> M2-02 -> service health routes"
+
+  - task_id: "M2-03"
+    description: "Add correlation IDs and safe structured request logs"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "services/identity-user/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Correlation middleware and structured logger"
+        - file: "services/vehicle-catalog/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Correlation middleware and structured logger"
+        - file: "services/recommendation/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "Correlation middleware and structured logger"
+    verification:
+      build_passed: true
+      test_results:
+        command: "npm test"
+        passed: 24
+        failed: 0
+        skipped: 0
+        failures: []
+      notes: "Valid request IDs are echoed, invalid IDs replaced, and failure logs exclude request paths and exception text."
+    upstream_trace:
+      plan_item: "Milestone 2"
+      requirements: ["FR-ERR-01", "NFR-OBS-01"]
+      full_trace: "FR-ERR-01/NFR-OBS-01 -> Milestone 2 -> M2-03 -> correlation and log middleware"
+
+  - task_id: "M2-04"
+    description: "Bound request bodies and implement the safe error envelope"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "services/identity-user/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "JSON content type, 64 KiB cap, safe error middleware"
+        - file: "services/vehicle-catalog/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "JSON content type, 64 KiB cap, safe error middleware"
+        - file: "services/recommendation/src/foundation.js"
+          changes:
+            - change_type: "added"
+              description: "JSON content type, 64 KiB cap, safe error middleware"
+    verification:
+      build_passed: true
+      test_results:
+        command: "npm test"
+        passed: 24
+        failed: 0
+        skipped: 0
+        failures: []
+      notes: "Tests cover 400, 404, 413, 415, and sanitized 500 responses."
+    upstream_trace:
+      plan_item: "Milestone 2"
+      requirements: ["FR-ERR-01", "NFR-SEC-03"]
+      full_trace: "FR-ERR-01/NFR-SEC-03 -> Milestone 2 -> M2-04 -> request and error middleware"
+
+  - task_id: "M2-05"
+    description: "Document service foundations and add cross-service validation"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "README.md"
+          changes:
+            - change_type: "modified"
+              description: "Document service config, health, and request limits"
+        - file: "docs/05_API_SPECIFICATION.md"
+          changes:
+            - change_type: "modified"
+              description: "Document health, correlation, JSON and error contracts"
+        - file: "docs/11_IMPLEMENTATION_PLAN.md"
+          changes:
+            - change_type: "modified"
+              description: "Mark Milestone 2 and checklist item complete"
+        - file: "docs/12_DEVELOPMENT_LOG.md"
+          changes:
+            - change_type: "modified"
+              description: "Record scope, decisions, and validation results"
+        - file: "services/identity-user/test/app.test.js"
+          changes:
+            - change_type: "modified"
+              description: "Configuration, request, error, and shutdown coverage"
+        - file: "services/vehicle-catalog/test/app.test.js"
+          changes:
+            - change_type: "added"
+              description: "Configuration, request, error, and shutdown coverage"
+        - file: "services/recommendation/test/app.test.js"
+          changes:
+            - change_type: "added"
+              description: "Configuration, request, error, and shutdown coverage"
+    verification:
+      build_passed: true
+      test_results:
+        command: "npm test"
+        passed: 24
+        failed: 0
+        skipped: 0
+        failures: []
+      notes: "npm run lint and npm run build passed."
+    upstream_trace:
+      plan_item: "Milestone 2"
+      requirements: ["FR-ERR-01", "NFR-SEC-03", "NFR-OBS-01"]
+      full_trace: "FR-ERR-01/NFR-SEC-03/NFR-OBS-01 -> Milestone 2 -> M2-05 -> tests and documentation"
+
+pending_tasks: []
+untracked_changes: []
+
+traceability_chain:
+  - chain_id: "TRACE-M2-ERRORS"
+    requirement: "FR-ERR-01"
+    plan_phase: "Milestone 2"
+    plan_item: "Service foundations, health, and error contracts"
+    tasks: ["M2-02", "M2-03", "M2-04", "M2-05"]
+    files:
+      - "services/identity-user/src/foundation.js"
+      - "services/vehicle-catalog/src/foundation.js"
+      - "services/recommendation/src/foundation.js"
+    status: "complete"
+  - chain_id: "TRACE-M2-SECURITY-OBSERVABILITY"
+    requirement: "NFR-SEC-03 / NFR-OBS-01"
+    plan_phase: "Milestone 2"
+    plan_item: "Validated requests, safe logging, and operational endpoints"
+    tasks: ["M2-01", "M2-02", "M2-03", "M2-04", "M2-05"]
+    files:
+      - "services/identity-user/src/server.js"
+      - "services/vehicle-catalog/src/server.js"
+      - "services/recommendation/src/server.js"
+      - "README.md"
+      - "docs/05_API_SPECIFICATION.md"
+    status: "complete"
+
+validation:
+  passed: true
+  errors: []
+  warnings:
+    - "Readiness is process-only until database integration in Milestone 3."
+  blocking_issues: []

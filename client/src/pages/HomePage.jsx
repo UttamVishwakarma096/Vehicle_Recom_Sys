@@ -1,0 +1,654 @@
+import { useState, useEffect } from "react";
+import { Link } from "../router/Router.jsx";
+import { useNavigate } from "../router/hooks.js";
+import { useAuth } from "../context/useAuth.js";
+import { catalogClient } from "../services/catalogClient.js";
+import { Card } from "../components/ui/Card.jsx";
+import { Badge } from "../components/ui/Badge.jsx";
+import { Alert } from "../components/ui/Alert.jsx";
+import { FiSearch, FiX, FiCamera, FiZap, FiCheck, FiShield, FiLayers } from "react-icons/fi";
+import { FaCar, FaCarSide, FaScaleBalanced } from "react-icons/fa6";
+import { HiSparkles } from "react-icons/hi2";
+
+export function HomePage() {
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Interactive quick search input
+  const [searchQuery, setSearchQuery] = useState("");
+  // Quick vehicle category filter preview
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  // Catalog preview items
+  const [featuredVehicles, setFeaturedVehicles] = useState([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+
+  const categories = [
+    { id: "all", label: "All Vehicles", icon: HiSparkles },
+    { id: "suv", label: "SUVs & Compacts", icon: FaCarSide },
+    { id: "sedan", label: "Sedans", icon: FaCar },
+    { id: "hatchback", label: "Hatchbacks", icon: FaCar },
+    { id: "muv", label: "MUVs & Family", icon: FaCarSide },
+    { id: "electric", label: "Electric Vehicles (EV)", icon: FiZap },
+  ];
+
+  const handleCategorySelect = (categoryId) => {
+    setSelectedCategory(categoryId);
+    setLoadingVehicles(true);
+  };
+
+  // Fetch verified catalog sample based on selected category
+  useEffect(() => {
+    let active = true;
+
+    const queryParams = { limit: 8 };
+    if (selectedCategory === "electric") {
+      queryParams.fuelType = "electric";
+    } else if (selectedCategory !== "all") {
+      queryParams.bodyType = selectedCategory;
+    }
+
+    catalogClient
+      .listVehicles(queryParams)
+      .then((data) => {
+        if (active && data?.items) {
+          setFeaturedVehicles(data.items);
+        }
+      })
+      .catch(() => {
+        if (active) setFeaturedVehicles([]);
+      })
+      .finally(() => {
+        if (active) setLoadingVehicles(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/vehicles?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate("/vehicles");
+    }
+  };
+
+  const filteredVehicles = featuredVehicles.filter((v) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "electric") return v.fuelType?.toLowerCase() === "electric";
+    return v.bodyType?.toLowerCase() === selectedCategory.toLowerCase();
+  });
+
+  const formatPrice = (val) => {
+    if (!val) return "Price on inquiry";
+    const num = Number(val);
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(num);
+  };
+
+  return (
+    <div className="py-4 sm:py-8 flex flex-col gap-12 sm:gap-20">
+      {/* 1. Hero Section */}
+      <section className="relative flex flex-col items-start pt-2 sm:pt-6">
+        {/* Top Badges */}
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <Badge variant="blue" size="md">
+            <span className="inline-flex items-center gap-1.5">
+              <HiSparkles className="w-3.5 h-3.5 text-[#1F5A3A] dark:text-[#D8FF2A]" />
+              <span>Gemini 3.8 Multimodal AI Vision</span>
+            </span>
+          </Badge>
+          <Badge variant="lemon" size="md">
+            100% Verified Specs
+          </Badge>
+          <span className="text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
+            Deterministic Decision Engine
+          </span>
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="max-w-4xl text-3xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight leading-[1.15] text-[#0A0A0A] dark:text-[#F5F5F5]">
+          Intelligent vehicle discovery,{" "}
+          <span className="bg-gradient-to-r from-[#1F5A3A] to-[#D8FF2A] dark:from-[#D8FF2A] dark:to-[#85e022] bg-clip-text text-transparent">
+            grounded in real data.
+          </span>
+        </h1>
+
+        <p className="mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base lg:text-lg font-normal leading-relaxed text-slate-600 dark:text-slate-300">
+          Identify any car instantly with free Gemini AI vision, explore verified manufacturer
+          specifications, and match your driving priorities using transparent, deterministic scoring.
+        </p>
+
+        {/* Quick Search Bar directly in Hero */}
+        <div className="mt-6 sm:mt-8 w-full max-w-2xl">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-2.5 p-1.5 sm:p-2 rounded-2xl bg-white/80 dark:bg-[#2B2B2B]/80 backdrop-blur-xl border border-[#2B2B2B]/15 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/30"
+          >
+            <div className="relative flex-1 flex items-center min-h-[44px]">
+              <FiSearch className="absolute left-3.5 sm:left-4 text-slate-400 w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search make, model, or type (e.g. Nexon, EV)..."
+                className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-transparent text-sm font-medium text-[#0A0A0A] dark:text-[#F5F5F5] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="mr-3 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer flex items-center justify-center p-1"
+                >
+                  <FiX className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-xl bg-[#D8FF2A] hover:bg-[#cbf520] text-[#0A0A0A] px-5 sm:px-6 py-2.5 sm:py-3 text-sm font-bold shadow-md shadow-[#D8FF2A]/20 transition-all cursor-pointer w-full sm:w-auto min-h-[44px]"
+            >
+              Search Vehicles
+            </button>
+          </form>
+
+          {/* Quick Search Chips */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] sm:text-xs">Popular:</span>
+            {["Compact SUV", "Electric", "Under ₹10 Lakh", "Automatic"].map((term) => (
+              <button
+                key={term}
+                type="button"
+                onClick={() => navigate(`/vehicles?search=${encodeURIComponent(term)}`)}
+                className="px-2.5 py-1 rounded-full bg-slate-100/80 dark:bg-[#2B2B2B]/80 hover:bg-[#D8FF2A]/20 hover:text-[#0A0A0A] dark:hover:text-[#D8FF2A] border border-[#2B2B2B]/15 dark:border-white/10 transition-colors cursor-pointer text-[11px] sm:text-xs"
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Hero Quick Action Buttons */}
+        <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3.5 w-full sm:w-auto">
+          <Link
+            to="/ai-scanner"
+            className="inline-flex items-center gap-2 justify-center rounded-xl bg-[#D8FF2A] hover:bg-[#cbf520] text-[#0A0A0A] px-5 sm:px-6 py-3 sm:py-3.5 text-sm font-bold shadow-lg shadow-[#D8FF2A]/20 hover:shadow-[#D8FF2A]/35 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer w-full sm:w-auto"
+          >
+            <FiCamera className="w-4 h-4" />
+            <span>Scan Any Car (AI) →</span>
+          </Link>
+
+          <Link
+            to="/recommendations"
+            className="inline-flex items-center gap-2 justify-center rounded-xl bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200/80 dark:border-white/10 px-5 sm:px-6 py-3 sm:py-3.5 text-sm font-semibold shadow-xs hover:shadow-md backdrop-blur-md hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer w-full sm:w-auto"
+          >
+            <FiZap className="w-4 h-4 text-[#1F5A3A] dark:text-[#D8FF2A]" />
+            <span>Match Driving Needs</span>
+          </Link>
+
+          <Link
+            to="/compare"
+            className="inline-flex items-center gap-2 justify-center rounded-xl bg-slate-100/70 dark:bg-slate-800/50 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-300 px-5 sm:px-6 py-3 sm:py-3.5 text-sm font-semibold backdrop-blur-sm hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer w-full sm:w-auto"
+          >
+            <FaScaleBalanced className="w-3.5 h-3.5" />
+            <span>Compare Matrix</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* 2. Key Metrics Bar */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="p-3 sm:p-5 rounded-2xl bg-white/60 dark:bg-[#2B2B2B]/60 backdrop-blur-xl border border-[#2B2B2B]/10 dark:border-white/10 text-center">
+          <div className="text-xl sm:text-3xl font-mono font-bold text-[#1F5A3A] dark:text-[#D8FF2A]">
+            0%
+          </div>
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">
+            Zero Fabricated Specs
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            100% verified provenance
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-5 rounded-2xl bg-white/60 dark:bg-[#2B2B2B]/60 backdrop-blur-xl border border-[#2B2B2B]/10 dark:border-white/10 text-center">
+          <div className="text-xl sm:text-3xl font-mono font-bold text-[#0A0A0A] dark:text-[#F5F5F5]">
+            &lt; 2s
+          </div>
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">
+            Gemini Vision Scan
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Instant car identification
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-5 rounded-2xl bg-white/60 dark:bg-[#2B2B2B]/60 backdrop-blur-xl border border-[#2B2B2B]/10 dark:border-white/10 text-center">
+          <div className="text-xl sm:text-3xl font-mono font-bold text-[#1F5A3A] dark:text-[#D8FF2A]">
+            100%
+          </div>
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">
+            Deterministic Engine
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Explainable score weighting
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-5 rounded-2xl bg-white/60 dark:bg-[#2B2B2B]/60 backdrop-blur-xl border border-[#2B2B2B]/10 dark:border-white/10 text-center">
+          <div className="text-xl sm:text-3xl font-mono font-bold text-[#1F5A3A] dark:text-[#D8FF2A]">
+            3
+          </div>
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">
+            Isolated Microservices
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Independent DB boundaries
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Featured AI Scanner Interactive Showcase Banner */}
+      <section>
+        <Card className="p-4 sm:p-8 bg-gradient-to-br from-[#1F5A3A]/15 via-[#2B2B2B]/20 to-[#D8FF2A]/10 border-[#1F5A3A]/30 dark:border-[#D8FF2A]/25 overflow-hidden relative">
+          <div className="grid gap-6 md:gap-8 md:grid-cols-12 items-center">
+            <div className="md:col-span-7 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D8FF2A] animate-ping" />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#1F5A3A] dark:text-[#D8FF2A]">
+                  Multimodal AI Spotlight
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-3xl font-bold font-display text-slate-900 dark:text-white tracking-tight">
+                Spotted a car you like? Let Gemini AI identify it.
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl">
+                Just drag-and-drop a photo or press{" "}
+                <kbd className="font-mono bg-white dark:bg-[#2B2B2B] px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-xs">
+                  Ctrl+V
+                </kbd>{" "}
+                anywhere to paste an image. Our multimodal vision engine identifies the make, model,
+                year, body type, and immediately cross-references verified vehicles in our catalog.
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                <Link
+                  to="/ai-scanner"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D8FF2A] hover:bg-[#cbf520] text-[#0A0A0A] px-5 py-2.5 text-xs font-bold shadow-md shadow-[#D8FF2A]/20 transition-all cursor-pointer w-full sm:w-auto"
+                >
+                  <span>Try AI Car Scanner Now</span>
+                  <FiCamera className="w-3.5 h-3.5" />
+                </Link>
+                {!isAuthenticated ? (
+                  <Link
+                    to="/login"
+                    className="text-xs font-semibold text-[#1F5A3A] dark:text-[#D8FF2A] hover:underline"
+                  >
+                    Sign in to unlock AI features →
+                  </Link>
+                ) : (
+                  <span className="text-xs text-[#1F5A3A] dark:text-[#D8FF2A] font-semibold flex items-center gap-1.5">
+                    <FiCheck className="w-3.5 h-3.5" />
+                    <span>Signed in as {user?.email}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Visual AI Preview Graphic */}
+            <div className="md:col-span-5 flex justify-center w-full">
+              <div className="w-full max-w-sm rounded-2xl border border-white/80 dark:border-white/15 bg-white/70 dark:bg-[#2B2B2B]/80 p-3.5 sm:p-4 shadow-xl backdrop-blur-xl flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-[#2B2B2B]/10 dark:border-white/10 pb-2">
+                  <span className="text-xs font-bold font-display text-slate-800 dark:text-slate-200">
+                    Live Vision Detection
+                  </span>
+                  <Badge variant="lime" size="sm">
+                    96% CONFIDENCE
+                  </Badge>
+                </div>
+                <div className="h-28 sm:h-32 rounded-xl bg-gradient-to-tr from-[#0A0A0A] via-[#1F5A3A]/40 to-[#2B2B2B] flex items-center justify-center text-4xl shadow-inner relative overflow-hidden">
+                  <FaCar className="w-10 sm:w-12 h-10 sm:h-12 text-[#D8FF2A] animate-pulse" />
+                  <div className="absolute inset-x-0 bottom-0 py-1 bg-black/70 backdrop-blur-xs text-center text-[10px] font-mono text-[#D8FF2A]">
+                    SCANNING: FRONT FASCIA & BODY PROFILE
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <strong className="text-[#0A0A0A] dark:text-[#F5F5F5] font-bold block">
+                      Tata Nexon
+                    </strong>
+                    <span className="text-[11px] text-slate-500">Compact SUV • 2023-2024</span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-[#1F5A3A] dark:text-[#D8FF2A]">
+                    ₹8,15,000+
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* 4. Verified Catalog Preview Section */}
+      <section>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+          <div>
+            <Badge variant="blue" size="sm">
+              Live Catalog
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl font-bold font-display text-slate-900 dark:text-white tracking-tight mt-1">
+              Explore Verified Vehicles
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Real manufacturer specifications verified by Catalog administrators.
+            </p>
+          </div>
+          <Link
+            to="/vehicles"
+            className="text-xs font-semibold text-[#1F5A3A] dark:text-[#D8FF2A] hover:underline flex items-center gap-1 self-start sm:self-auto"
+          >
+            View all vehicles in catalog →
+          </Link>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {categories.map((cat) => {
+            const CatIcon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleCategorySelect(cat.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedCategory === cat.id
+                    ? "bg-[#D8FF2A] text-[#0A0A0A] shadow-sm shadow-[#D8FF2A]/20 font-bold"
+                    : "bg-white/70 dark:bg-[#2B2B2B]/70 text-slate-700 dark:text-[#F5F5F5] hover:bg-slate-100 dark:hover:bg-[#2B2B2B] border border-[#2B2B2B]/15 dark:border-white/10"
+                }`}
+              >
+                <CatIcon className="w-3.5 h-3.5" />
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Catalog Grid */}
+        {loadingVehicles ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="h-48 rounded-2xl bg-white/40 dark:bg-[#2B2B2B]/40 animate-pulse border border-[#2B2B2B]/10 dark:border-white/5"
+              />
+            ))}
+          </div>
+        ) : filteredVehicles.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {filteredVehicles.map((vehicle) => {
+              const exShowroom = vehicle.prices?.find(
+                (p) => p.type === "ex_showroom" && p.currency === "INR",
+              );
+              return (
+                <Link
+                  key={vehicle.id}
+                  to={`/vehicles/${vehicle.id}`}
+                  className="group rounded-2xl border border-[#2B2B2B]/10 dark:border-white/10 bg-white/70 dark:bg-[#2B2B2B]/60 p-4 shadow-[0_8px_30px_rgb(10,10,10,0.04)] dark:shadow-[0_10px_30px_rgb(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#1F5A3A]/40 dark:hover:border-[#D8FF2A]/40 hover:shadow-lg flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Vehicle Preview Image */}
+                    <div className="relative w-full h-36 mb-3 rounded-xl overflow-hidden bg-slate-100/80 dark:bg-[#1E1E1E]/80 border border-slate-200/50 dark:border-white/5">
+                      {vehicle.imageUrl ? (
+                        <img
+                          src={vehicle.imageUrl}
+                          alt={`${vehicle.make} ${vehicle.model}`}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.style.display = "none";
+                            if (e.currentTarget.nextElementSibling) {
+                              e.currentTarget.nextElementSibling.style.display = "flex";
+                            }
+                          }}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : null}
+                      <div
+                        className={`w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#252525] dark:to-[#1a1a1a] ${
+                          vehicle.imageUrl ? "hidden" : "flex"
+                        }`}
+                      >
+                        <FaCarSide className="w-8 h-8 mb-1 opacity-50" />
+                        <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">
+                          {vehicle.make} {vehicle.model}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <Badge variant="forest" size="sm">
+                        {vehicle.bodyType || "Vehicle"}
+                      </Badge>
+                      <span className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400">
+                        {vehicle.fuelType}
+                      </span>
+                    </div>
+                    <h3 className="font-display font-bold text-base text-[#0A0A0A] dark:text-[#F5F5F5] group-hover:text-[#1F5A3A] dark:group-hover:text-[#D8FF2A] transition-colors">
+                      {vehicle.make} {vehicle.model}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {vehicle.variant || "Standard Edition"}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-[#2B2B2B]/10 dark:border-white/10 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                        Ex-Showroom
+                      </span>
+                      <span className="font-mono font-bold text-sm text-[#1F5A3A] dark:text-[#D8FF2A]">
+                        {formatPrice(exShowroom?.amount)}
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-400 group-hover:translate-x-1 group-hover:text-[#1F5A3A] dark:group-hover:text-[#D8FF2A] transition-all">
+                      →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-[#2B2B2B]/20 dark:border-white/15 p-8 text-center bg-white/30 dark:bg-[#2B2B2B]/30">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No vehicles found matching {selectedCategory}. Explore the full catalog to filter all
+              vehicles.
+            </p>
+            <Link
+              to="/vehicles"
+              className="mt-3 inline-block text-xs font-semibold text-[#1F5A3A] dark:text-[#D8FF2A] hover:underline"
+            >
+              Browse Full Catalog →
+            </Link>
+          </div>
+        )}
+      </section>
+
+      {/* 5. 3 Steps: How It Works */}
+      <section>
+        <div className="text-center mb-8">
+          <Badge variant="lime" size="sm">
+            Simple 3-Step Flow
+          </Badge>
+          <h2 className="text-2xl sm:text-3xl font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight mt-2">
+            How VehicleWise Works
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-lg mx-auto">
+            From discovering vehicles to calculating ranked matches, everything is built for
+            transparency and clarity.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-3">
+          <Card className="p-6 relative">
+            <span className="w-8 h-8 rounded-full bg-[#D8FF2A] text-[#0A0A0A] font-mono font-bold text-xs flex items-center justify-center mb-4 shadow-md shadow-[#D8FF2A]/20">
+              01
+            </span>
+            <h3 className="text-base font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+              Snap, Paste, or Search
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              Drag-and-drop a car photo into our Gemini AI scanner or explore verified catalog
+              filters by budget, fuel type, transmission, and seat count.
+            </p>
+          </Card>
+
+          <Card className="p-6 relative">
+            <span className="w-8 h-8 rounded-full bg-[#D8FF2A] text-[#0A0A0A] font-mono font-bold text-xs flex items-center justify-center mb-4 shadow-md shadow-[#D8FF2A]/20">
+              02
+            </span>
+            <h3 className="text-base font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+              Set Your Priorities
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              Scale your preferences for fuel efficiency, power performance, safety ratings, and
+              maintenance costs from 1 to 5 to generate custom component weights.
+            </p>
+          </Card>
+
+          <Card className="p-6 relative">
+            <span className="w-8 h-8 rounded-full bg-[#D8FF2A] text-[#0A0A0A] font-mono font-bold text-xs flex items-center justify-center mb-4 shadow-md shadow-[#D8FF2A]/20">
+              03
+            </span>
+            <h3 className="text-base font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+              Inspect Ranked Evidence
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+              Receive deterministic match scores, positive strengths, and clear trade-off
+              disclosures before comparing vehicles side-by-side.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* 6. Core Architectural Pillars */}
+      <section className="grid gap-6 sm:grid-cols-3">
+        <Card hoverEffect className="p-6">
+          <div className="w-10 h-10 rounded-xl bg-[#1F5A3A]/15 border border-[#1F5A3A]/30 flex items-center justify-center text-[#1F5A3A] dark:text-[#D8FF2A] mb-4">
+            <FiZap className="w-5 h-5" />
+          </div>
+          <Badge variant="forest" size="sm">
+            Rule-Based v1
+          </Badge>
+          <h2 className="mt-3 text-lg font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+            Deterministic Scoring
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-normal">
+            Transparent, repeatable mathematical compatibility calculated in the backend engine. We
+            never generate opaque black-box estimates or uncalibrated probabilities.
+          </p>
+        </Card>
+
+        <Card hoverEffect className="p-6">
+          <div className="w-10 h-10 rounded-xl bg-[#D8FF2A]/15 border border-[#D8FF2A]/30 flex items-center justify-center text-[#0A0A0A] dark:text-[#D8FF2A] mb-4">
+            <FiShield className="w-5 h-5" />
+          </div>
+          <Badge variant="lime" size="sm">
+            Traceable Truth
+          </Badge>
+          <h2 className="mt-3 text-lg font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+            Zero Invented Specs
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-normal">
+            Missing, unknown, or unverified vehicle specifications are explicitly disclosed under
+            missing-data warnings and never populated with synthetic estimates.
+          </p>
+        </Card>
+
+        <Card hoverEffect className="p-6">
+          <div className="w-10 h-10 rounded-xl bg-[#2B2B2B]/15 border border-[#2B2B2B]/30 flex items-center justify-center text-[#2B2B2B] dark:text-[#F5F5F5] mb-4">
+            <FiLayers className="w-5 h-5" />
+          </div>
+          <Badge variant="charcoal" size="sm">
+            Microservices
+          </Badge>
+          <h2 className="mt-3 text-lg font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+            Isolated Service Boundaries
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-normal">
+            Three independently deployable domains: Identity & User, Vehicle Catalog, and
+            Recommendation Engine, each strictly owning its database.
+          </p>
+        </Card>
+      </section>
+
+      {/* 7. Catalog Integrity Notice */}
+      <section>
+        <Alert title="Catalog Data Integrity Policy" variant="warning">
+          No synthetic vehicle fixtures are presented as verified production data. Only approved,
+          traceable catalog information with verified provenance and published status is exposed
+          through the Vehicle Catalog Service.
+        </Alert>
+      </section>
+
+      {/* 8. Final Call to Action */}
+      <section>
+        <Card className="p-5 sm:p-10 text-center bg-gradient-to-r from-[#1F5A3A]/15 via-[#2B2B2B]/20 to-[#D8FF2A]/10 border-[#1F5A3A]/25 dark:border-[#D8FF2A]/25 relative overflow-hidden">
+          <h2 className="text-xl sm:text-3xl font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">
+            Ready to find your ideal vehicle?
+          </h2>
+          <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto mb-6">
+            Join VehicleWise to access the Gemini AI Car Scanner, calculate personalized
+            recommendation scores, and save favorite comparison matrices.
+          </p>
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-[#D8FF2A] hover:bg-[#cbf520] text-[#0A0A0A] px-5 sm:px-6 py-3 sm:py-3.5 text-xs font-bold shadow-md shadow-[#D8FF2A]/20 hover:shadow-[#D8FF2A]/35 transition-all cursor-pointer text-center"
+                >
+                  Create Free Account →
+                </Link>
+                <Link
+                  to="/login"
+                  className="rounded-xl bg-white/80 dark:bg-[#2B2B2B]/80 text-[#0A0A0A] dark:text-[#F5F5F5] border border-[#2B2B2B]/15 dark:border-white/10 px-5 sm:px-6 py-3 sm:py-3.5 text-xs font-semibold shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B] transition-all cursor-pointer text-center"
+                >
+                  Sign In
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/ai-scanner"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D8FF2A] hover:bg-[#cbf520] text-[#0A0A0A] px-5 sm:px-6 py-3 sm:py-3.5 text-xs font-bold shadow-md shadow-[#D8FF2A]/20 hover:shadow-[#D8FF2A]/35 transition-all cursor-pointer text-center"
+                >
+                  <FiCamera className="w-4 h-4" />
+                  <span>Open AI Car Scanner →</span>
+                </Link>
+                <Link
+                  to="/recommendations"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/80 dark:bg-[#2B2B2B]/80 text-[#0A0A0A] dark:text-[#F5F5F5] border border-[#2B2B2B]/15 dark:border-white/10 px-5 sm:px-6 py-3 sm:py-3.5 text-xs font-semibold shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B] transition-all cursor-pointer text-center"
+                >
+                  <FiZap className="w-4 h-4 text-[#1F5A3A] dark:text-[#D8FF2A]" />
+                  <span>Start Recommendation Flow</span>
+                </Link>
+              </>
+            )}
+            <Link
+              to="/vehicles"
+              className="rounded-xl bg-slate-100/80 dark:bg-[#2B2B2B]/60 text-slate-700 dark:text-[#F5F5F5] px-5 sm:px-6 py-3 sm:py-3.5 text-xs font-semibold hover:bg-slate-200/80 dark:hover:bg-[#2B2B2B] transition-all cursor-pointer text-center"
+            >
+              Browse Vehicle Catalog
+            </Link>
+          </div>
+        </Card>
+      </section>
+    </div>
+  );
+}

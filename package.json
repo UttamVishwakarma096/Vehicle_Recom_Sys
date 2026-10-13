@@ -1,0 +1,34 @@
+{
+  "name": "smart-vehicle-recommendation-system",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "services/identity-user",
+    "services/vehicle-catalog",
+    "services/recommendation"
+  ],
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev:client": "npm run dev --workspace @vehicle/client",
+    "dev:identity": "npm run dev --workspace @vehicle/identity-user",
+    "dev:catalog": "npm run dev --workspace @vehicle/vehicle-catalog",
+    "dev:recommendation": "npm run dev --workspace @vehicle/recommendation",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "eslint client services test",
+    "seed:catalog": "npm run seed --workspace @vehicle/vehicle-catalog",
+    "test": "npm test --workspaces --if-present",
+    "test:e2e": "node --test test/e2e.test.js",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "globals": "^17.12.0",
+    "mongodb-memory-server": "^11.3.0"
+  }
+}
