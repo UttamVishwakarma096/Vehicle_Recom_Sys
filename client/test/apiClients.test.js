@@ -229,3 +229,43 @@ test("authClient performs login, register, and logout with CSRF update", async (
     globalThis.fetch = originalFetch;
   }
 });
+
+test("recommendationClient.getAiComparisonConclusion serializes vehicleIds and optional userPreferences", async () => {
+  let interceptedUrl;
+  let interceptedBody;
+  let interceptedHeaders;
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, options) => {
+    interceptedUrl = url;
+    interceptedHeaders = options.headers;
+    interceptedBody = JSON.parse(options.body);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        conclusion: { summary: "Test summary", verdicts: [], categoryWinners: [], finalTakeaway: "Test takeaway" },
+        userPreferences: interceptedBody.userPreferences,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  };
+
+  try {
+    const res = await recommendationClient.getAiComparisonConclusion(["id-1", "id-2"], {
+      userPreferences: "Prefer high mileage and low maintenance",
+      apiKey: "custom-api-key",
+    });
+
+    assert.equal(interceptedUrl, "/api/v1/compare/conclusion");
+    assert.deepEqual(interceptedBody.vehicleIds, ["id-1", "id-2"]);
+    assert.equal(interceptedBody.userPreferences, "Prefer high mileage and low maintenance");
+    assert.equal(interceptedHeaders["x-gemini-api-key"], "custom-api-key");
+    assert.equal(res.success, true);
+    assert.equal(res.userPreferences, "Prefer high mileage and low maintenance");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

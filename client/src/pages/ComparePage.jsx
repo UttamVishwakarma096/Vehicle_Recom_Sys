@@ -12,7 +12,16 @@ import { Modal } from "../components/ui/Modal.jsx";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner.jsx";
 import { Alert } from "../components/ui/Alert.jsx";
 import { FaScaleBalanced, FaTrophy, FaLightbulb } from "react-icons/fa6";
-import { FiX, FiLock, FiZap, FiCheck, FiAlertCircle } from "react-icons/fi";
+import {
+  FiX,
+  FiLock,
+  FiZap,
+  FiCheck,
+  FiAlertCircle,
+  FiEdit3,
+  FiInfo,
+  FiCheckCircle,
+} from "react-icons/fi";
 import {
   getStoredCompareIds,
   saveStoredCompareIds,
@@ -66,6 +75,8 @@ export function ComparePage() {
   const [conclusionLoading, setConclusionLoading] = useState(false);
   const [conclusionError, setConclusionError] = useState(null);
   const [conclusionCooldown, setConclusionCooldown] = useState(0);
+  const [userPreferences, setUserPreferences] = useState("");
+  const [appliedPreferences, setAppliedPreferences] = useState("");
 
   // Rate limiter cooldown countdown timer
   useEffect(() => {
@@ -91,6 +102,7 @@ export function ComparePage() {
           setLoading(false);
           setConclusionData(null);
           setConclusionError(null);
+          setAppliedPreferences("");
         }
       })
       .catch((err) => {
@@ -109,6 +121,7 @@ export function ComparePage() {
   const updateUrlIds = (newIds) => {
     setConclusionData(null);
     setConclusionError(null);
+    setAppliedPreferences("");
     if (newIds.length >= 2) {
       setLoading(true);
     }
@@ -153,10 +166,13 @@ export function ComparePage() {
       setConclusionLoading(true);
       setConclusionError(null);
 
-      const res = await recommendationClient.getAiComparisonConclusion(vehicleIds);
+      const res = await recommendationClient.getAiComparisonConclusion(vehicleIds, {
+        userPreferences: userPreferences.trim(),
+      });
 
       if (res?.conclusion) {
         setConclusionData(res.conclusion);
+        setAppliedPreferences(userPreferences.trim());
         toast.success("AI comparative conclusion generated successfully!", "Verdict Ready");
       }
     } catch (err) {
@@ -492,6 +508,50 @@ export function ComparePage() {
               </Button>
             </div>
 
+            {/* User Preferences & Priorities Comment Box (Optional) */}
+            <div className="mb-6 p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-black/25 backdrop-blur-md">
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="user-preferences-input"
+                  className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#F5F5F5] flex items-center gap-1.5"
+                >
+                  <FiEdit3 className="w-3.5 h-3.5 text-[#1F5A3A] dark:text-[#D8FF2A]" />
+                  <span>Your Preferences & Usage Needs</span>
+                  <span className="text-[10px] font-normal normal-case px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400">
+                    Optional
+                  </span>
+                </label>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {userPreferences.length}/500
+                </span>
+              </div>
+              <textarea
+                id="user-preferences-input"
+                rows={3}
+                maxLength={500}
+                value={userPreferences}
+                onChange={(e) => setUserPreferences(e.target.value)}
+                placeholder="e.g., Daily office commute in heavy city traffic, family of 4 with luggage space, prioritize high mileage and low maintenance over sporty acceleration..."
+                className="w-full text-xs rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A] text-slate-800 dark:text-[#F5F5F5] placeholder:text-slate-400 p-3 outline-none focus:border-[#1F5A3A] dark:focus:border-[#D8FF2A] focus:ring-1 focus:ring-[#D8FF2A] transition-all resize-y"
+                disabled={conclusionLoading}
+              />
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <FiInfo className="w-3 h-3 text-[#1F5A3A] dark:text-[#D8FF2A] shrink-0" />
+                  <span>Tell Gemini AI your driving habits, family requirements, or priorities to help determine the right car for you.</span>
+                </p>
+                {userPreferences && (
+                  <button
+                    type="button"
+                    onClick={() => setUserPreferences("")}
+                    className="text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    Clear preferences
+                  </button>
+                )}
+              </div>
+            </div>
+
             {conclusionError && (
               <Alert variant="danger" className="mb-4">
                 {conclusionError}
@@ -533,6 +593,17 @@ export function ComparePage() {
 
             {conclusionData && !conclusionLoading && (
               <div className="flex flex-col gap-6">
+                {/* Applied Preferences Callout Banner */}
+                {appliedPreferences && (
+                  <div className="p-3.5 rounded-xl border border-[#1F5A3A]/30 dark:border-[#D8FF2A]/20 bg-[#1F5A3A]/5 dark:bg-[#D8FF2A]/5 flex items-start gap-2.5 shadow-xs">
+                    <FiCheckCircle className="w-4 h-4 text-[#1F5A3A] dark:text-[#D8FF2A] mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-800 dark:text-[#F5F5F5]">Customized for your preferences: </span>
+                      <span className="italic text-slate-600 dark:text-slate-300">"{appliedPreferences}"</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Executive Summary */}
                 <div className="p-4 rounded-xl bg-white/90 dark:bg-[#1A1A1A]/90 border border-slate-200/70 dark:border-white/10 shadow-xs">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#1F5A3A] dark:text-[#D8FF2A] block mb-1">

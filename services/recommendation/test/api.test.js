@@ -500,6 +500,28 @@ test("COMP-04: AI comparison conclusion endpoint returns structured comparative 
   assert.equal(response.headers.get("x-ratelimit-limit"), "3");
 });
 
+test("COMP-04b: AI comparison conclusion endpoint accepts optional userPreferences and tailors output", async () => {
+  const userPreferences = "Family of 4 with elderly parents, prioritize rear seat comfort and low maintenance.";
+  const response = await fetch(`${baseUrl}/api/v1/compare/conclusion`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-gemini-api-key": "test-key",
+    },
+    body: JSON.stringify({
+      vehicleIds: [VEHICLE_1_ID, VEHICLE_2_ID],
+      userPreferences,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.success, true);
+  assert.equal(data.userPreferences, userPreferences);
+  assert.ok(data.conclusion.summary.includes(userPreferences));
+  assert.ok(data.conclusion.finalTakeaway.includes(userPreferences));
+});
+
 test("COMP-05: AI comparison conclusion rate limits rapid bursts via Token Bucket and returns 429 RATE_LIMIT_EXCEEDED with Retry-After header", async () => {
   const clientIp = "192.168.20.55";
   const headers = {

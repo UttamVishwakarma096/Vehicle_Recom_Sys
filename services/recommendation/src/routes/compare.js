@@ -81,11 +81,12 @@ function formatVehiclesForPrompt(vehicles) {
   });
 }
 
-function generateMockConclusion(vehicles) {
+function generateMockConclusion(vehicles, userPreferences = "") {
   const v1 = vehicles[0];
   const v2 = vehicles[1];
+  const customNote = userPreferences?.trim() ? ` Tailored for your stated preferences: "${userPreferences.trim()}".` : "";
   return {
-    summary: `Comparing ${v1.make} ${v1.model} and ${v2.make} ${v2.model} highlights distinct trade-offs between pricing, fuel economy, and power delivery.`,
+    summary: `Comparing ${v1.make} ${v1.model} and ${v2.make} ${v2.model} highlights distinct trade-offs between pricing, fuel economy, and power delivery.${customNote}`,
     verdicts: vehicles.map((v, idx) => ({
       vehicleId: v.id,
       vehicleName: `${v.make} ${v.model}`,
@@ -126,7 +127,7 @@ function generateMockConclusion(vehicles) {
         reason: "Aggressive price-to-feature ratio with economical maintenance.",
       },
     ],
-    finalTakeaway: `If you prioritize highway confidence, safety build, and punchy acceleration, the ${v1.make} ${v1.model} is the recommended choice. If maximum fuel mileage, low maintenance, and smooth city commuting are your top priorities, choose the ${v2.make} ${v2.model}.`,
+    finalTakeaway: `If you prioritize highway confidence, safety build, and punchy acceleration, the ${v1.make} ${v1.model} is the recommended choice. If maximum fuel mileage, low maintenance, and smooth city commuting are your top priorities, choose the ${v2.make} ${v2.model}.${customNote}`,
   };
 }
 
@@ -320,7 +321,20 @@ export function createCompareRoutes({
         request.correlationId,
       );
 
-      const { apiKey, model } = request.body || {};
+      const { apiKey, model, userPreferences } = request.body || {};
+      if (
+        userPreferences !== undefined &&
+        (typeof userPreferences !== "string" || userPreferences.length > 1000)
+      ) {
+        throw new HttpError(
+          400,
+          "INVALID_INPUT",
+          "userPreferences must be a string up to 1000 characters.",
+        );
+      }
+      const trimmedPreferences =
+        typeof userPreferences === "string" ? userPreferences.trim() : "";
+
       const activeModel = model && SUPPORTED_MODELS.has(model) ? model : DEFAULT_MODEL;
       const resolvedApiKey =
         request.headers["x-gemini-api-key"] ||
@@ -344,17 +358,22 @@ export function createCompareRoutes({
       let conclusion;
       let modelUsed = activeModel;
       if (isTestEnv && (!resolvedApiKey || resolvedApiKey === "test-key" || resolvedApiKey === "mock-test")) {
-        conclusion = generateMockConclusion(orderedVehicles);
+        conclusion = generateMockConclusion(orderedVehicles, trimmedPreferences);
       } else {
         const ai = new GoogleGenAI({ apiKey: resolvedApiKey });
         const formattedList = formatVehiclesForPrompt(orderedVehicles);
+
+        const preferencesBlock = trimmedPreferences
+          ? `\nBuyer's Stated Personal Preferences and Usage Needs:\n"${trimmedPreferences}"\n\nCarefully evaluate these preferences. Determine which vehicle is the better fit based on the buyer's unique needs, and ensure the "finalTakeaway" directly addresses their stated requirements.`
+          : "";
 
         const prompt = `You are an expert automotive vehicle analyst and consumer car guide.
 Analyze and compare the following ${formattedList.length} vehicles based on their verified specifications, prices, mileage, power, and market positioning:
 
 ${JSON.stringify(formattedList, null, 2)}
+${preferencesBlock}
 
-Provide an objective, detailed comparative verdict that explains WHY one vehicle is better suited than the other(s) for different buyer priorities (e.g. city fuel economy vs highway performance, safety vs maintenance costs, features vs budget).
+Provide an objective, detailed comparative verdict that explains WHY one vehicle is better suited than the other(s) for different buyer priorities (e.g. city fuel economy vs highway performance, safety vs maintenance costs, features vs budget).${trimmedPreferences ? " Factor the buyer's stated preferences into your verdict and final takeaway." : ""}
 
 Respond ONLY with valid JSON matching this exact structure with no extra text, markdown code blocks, or commentary:
 {
@@ -419,6 +438,7 @@ Respond ONLY with valid JSON matching this exact structure with no extra text, m
         success: true,
         model: modelUsed || activeModel,
         conclusion,
+        userPreferences: trimmedPreferences || undefined,
       });
     } catch (error) {
       next(error);

@@ -26,14 +26,21 @@ export const recommendationClient = {
     return await apiClient.post("/api/v1/compare", { vehicleIds });
   },
 
-  async getAiComparisonConclusion(vehicleIds = [], { apiKey } = {}) {
+  async getAiComparisonConclusion(vehicleIds = [], options = {}) {
+    const opts = typeof options === "string" ? { userPreferences: options } : options;
+    const { apiKey, userPreferences } = opts;
     const headers = {};
     if (apiKey) {
       headers["x-gemini-api-key"] = apiKey;
     }
+    const payload = { vehicleIds };
+    if (apiKey) payload.apiKey = apiKey;
+    if (userPreferences && typeof userPreferences === "string" && userPreferences.trim()) {
+      payload.userPreferences = userPreferences.trim();
+    }
     return await apiClient.post(
       "/api/v1/compare/conclusion",
-      { vehicleIds, apiKey },
+      payload,
       { headers },
     );
   },

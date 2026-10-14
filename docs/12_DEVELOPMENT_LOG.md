@@ -2226,3 +2226,37 @@ product features and database integration not started
 - `client` tests (`node --test`): All 22 tests passed (including 7 new unit tests for compareStorage).
 - Service tests (`npm test`): All 132 tests passed across all 4 workspaces (`client`: 22, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
 - `npm run build`: Production bundle built cleanly with Vite in 1.36s.
+
+## 2026-10-14 — Optional User Preferences in Vehicle Comparison AI Verdict
+
+### Scope and objective
+
+- In comparison matrix, add an optional comment/text box for user preferences and requirements.
+- Feed user preferences directly into the Gemini AI comparative analysis to determine and recommend the right car for their specific driving habits, family needs, and priorities.
+- Display an applied preferences indicator on the generated comparative verdict when custom preferences are supplied.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/src/routes/compare.js`**:
+   - `POST /api/v1/compare/conclusion`: Accepted optional `userPreferences` (validated as string up to 1000 characters).
+   - Injected user preferences into the Gemini prompt instructions, instructing the model to evaluate tradeoffs and tailor the comparative verdict, category champions, and final takeaway based on the buyer's unique needs.
+   - Updated `generateMockConclusion` to factor in `userPreferences` in test/mock environments.
+   - Returned `userPreferences` in API response payload.
+2. **`services/recommendation/test/api.test.js`**:
+   - Added `COMP-04b` test verifying `/api/v1/compare/conclusion` accepts `userPreferences` and tailors the verdict output.
+3. **`client/src/services/recommendationClient.js`**:
+   - Updated `getAiComparisonConclusion` to serialize `userPreferences` in request body.
+4. **`client/test/apiClients.test.js`**:
+   - Added test verifying client serializes `userPreferences` accurately to the comparison endpoint.
+5. **`client/src/pages/ComparePage.jsx`**:
+   - Added user preferences state (`userPreferences`, `appliedPreferences`).
+   - Integrated an optional preferences comment box above the verdict trigger with character counter (500 chars), guidance help text, and clear button.
+   - Passed `userPreferences` to `getAiComparisonConclusion`.
+   - Rendered a highlighted "Customized for your preferences" banner above the executive summary when custom preferences are applied.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `client` tests (`node --test`): All 23 tests passed.
+- `recommendation` tests (`node --test`): All 49 tests passed (including new `COMP-04b`).
+- `npm run build`: Production bundle built cleanly with Vite in 1.62s.
