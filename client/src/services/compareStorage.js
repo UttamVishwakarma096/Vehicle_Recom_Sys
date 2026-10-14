@@ -50,12 +50,15 @@ export function saveStoredCompareIds(ids) {
   }
 }
 
+const VERDICT_STORAGE_KEY = "vehicle_compare_verdict";
+
 export function clearStoredCompareIds() {
   const storage = getStorage();
   if (!storage) return;
 
   try {
     storage.removeItem(STORAGE_KEY);
+    storage.removeItem(VERDICT_STORAGE_KEY);
   } catch {
     // Gracefully ignore
   }
@@ -82,4 +85,68 @@ export function removeVehicleFromCompare(vehicleId) {
   const next = current.filter((id) => id !== vehicleId);
   saveStoredCompareIds(next);
   return next;
+}
+
+export function getStoredVerdict(currentVehicleIds = []) {
+  const storage = getStorage();
+  if (!storage) return null;
+
+  try {
+    const raw = storage.getItem(VERDICT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.conclusion || !Array.isArray(parsed.vehicleIds)) {
+      return null;
+    }
+    if (Array.isArray(currentVehicleIds) && currentVehicleIds.length > 0) {
+      const storedSorted = [...parsed.vehicleIds].sort().join(",");
+      const currentSorted = [...currentVehicleIds].sort().join(",");
+      if (storedSorted !== currentSorted) {
+        return null;
+      }
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredVerdict({
+  vehicleIds,
+  conclusion,
+  userPreferences = "",
+  appliedPreferences = "",
+}) {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    if (!conclusion || !Array.isArray(vehicleIds) || vehicleIds.length === 0) {
+      storage.removeItem(VERDICT_STORAGE_KEY);
+      return;
+    }
+    storage.setItem(
+      VERDICT_STORAGE_KEY,
+      JSON.stringify({
+        vehicleIds,
+        conclusion,
+        userPreferences,
+        appliedPreferences,
+        timestamp: Date.now(),
+      })
+    );
+  } catch {
+    // Gracefully ignore storage quota / access issues
+  }
+}
+
+export function clearStoredVerdict() {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(VERDICT_STORAGE_KEY);
+  } catch {
+    // Gracefully ignore
+  }
 }

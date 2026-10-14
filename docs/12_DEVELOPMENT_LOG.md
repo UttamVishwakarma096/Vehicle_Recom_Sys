@@ -2285,3 +2285,36 @@ product features and database integration not started
 - `vehicle-catalog` tests (`node --test`): All 34 tests passed.
 - `recommendation` tests (`node --test`): All 49 tests passed (including `AI-04` and `AI-05` token bucket rate limiter refill tests).
 - `npm run build`: Production bundle built cleanly with Vite in 5.29s.
+
+## 2026-10-14 — AI Comparative Verdict Persistence Across Page Navigation
+
+### Scope and objective
+
+- Fix AI verdict disappearing after switching pages or navigating away from `/compare` and returning.
+- Persist the AI comparative verdict (`conclusionData`), custom preferences (`userPreferences`), and applied preferences banner (`appliedPreferences`) in client storage associated with the current vehicle set.
+- Automatically restore the verdict immediately when returning to `/compare` if the compared vehicle IDs match.
+- Invalidate and clear the cached verdict if the comparison list changes (e.g. adding or removing cars) or when clicking "Clear All".
+
+### Implemented behavior and files changed
+
+1. **`client/src/services/compareStorage.js`**:
+   - Added `VERDICT_STORAGE_KEY = "vehicle_compare_verdict"`.
+   - Implemented `getStoredVerdict(currentVehicleIds)`: checks that the stored verdict matches the current vehicle set regardless of ID order, returning `null` if empty or mismatched.
+   - Implemented `saveStoredVerdict({ vehicleIds, conclusion, userPreferences, appliedPreferences })`.
+   - Implemented `clearStoredVerdict()`.
+   - Updated `clearStoredCompareIds()` to also purge the stored verdict.
+2. **`client/test/compareStorage.test.js`**:
+   - Added 3 unit tests verifying verdict persistence, order-independent matching, mismatch invalidation, and clear operations.
+3. **`client/src/pages/ComparePage.jsx`**:
+   - Initialized `conclusionData`, `userPreferences`, and `appliedPreferences` directly from `getStoredVerdict(vehicleIds)` to prevent UI flash or unneeded regeneration.
+   - Updated `compareVehicles(vehicleIds).then(...)` to restore saved verdict when available rather than wiping state with `setConclusionData(null)`.
+   - Updated `updateUrlIds` to clear the verdict if new vehicle IDs differ or when cleared.
+   - Updated `handleGenerateAiConclusion` to invoke `saveStoredVerdict(...)` upon successful response.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings across all workspaces.
+- `client` tests (`node --test`): All 26 tests passed (including 3 new verdict persistence tests).
+- Service tests (`npm test`): All 111 tests passed across services (`identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 49).
+- `npm run build`: Production bundle built cleanly with Vite in 2.21s.
+

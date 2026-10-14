@@ -26,6 +26,9 @@ import {
   getStoredCompareIds,
   saveStoredCompareIds,
   clearStoredCompareIds,
+  getStoredVerdict,
+  saveStoredVerdict,
+  clearStoredVerdict,
 } from "../services/compareStorage.js";
 
 export function ComparePage() {
@@ -70,13 +73,22 @@ export function ComparePage() {
   const [catalogVehicles, setCatalogVehicles] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
-  // AI Conclusion state
-  const [conclusionData, setConclusionData] = useState(null);
+  // AI Conclusion state with persistence from compareStorage
+  const [conclusionData, setConclusionData] = useState(() => {
+    const saved = getStoredVerdict(vehicleIds);
+    return saved?.conclusion || null;
+  });
   const [conclusionLoading, setConclusionLoading] = useState(false);
   const [conclusionError, setConclusionError] = useState(null);
   const [conclusionCooldown, setConclusionCooldown] = useState(0);
-  const [userPreferences, setUserPreferences] = useState("");
-  const [appliedPreferences, setAppliedPreferences] = useState("");
+  const [userPreferences, setUserPreferences] = useState(() => {
+    const saved = getStoredVerdict(vehicleIds);
+    return saved?.userPreferences || "";
+  });
+  const [appliedPreferences, setAppliedPreferences] = useState(() => {
+    const saved = getStoredVerdict(vehicleIds);
+    return saved?.appliedPreferences || "";
+  });
 
   // Rate limiter cooldown countdown timer
   useEffect(() => {
@@ -100,9 +112,17 @@ export function ComparePage() {
           setCompareData(data);
           setError(null);
           setLoading(false);
-          setConclusionData(null);
+
+          // Restore saved conclusion if one was previously generated for these vehicles
+          const saved = getStoredVerdict(vehicleIds);
+          if (saved) {
+            setConclusionData(saved.conclusion);
+            setAppliedPreferences(saved.appliedPreferences || "");
+            if (saved.userPreferences) {
+              setUserPreferences((prev) => prev || saved.userPreferences);
+            }
+          }
           setConclusionError(null);
-          setAppliedPreferences("");
         }
       })
       .catch((err) => {
@@ -119,9 +139,16 @@ export function ComparePage() {
   }, [vehicleIds, isAuthenticated]);
 
   const updateUrlIds = (newIds) => {
-    setConclusionData(null);
+    const saved = getStoredVerdict(newIds);
+    if (saved) {
+      setConclusionData(saved.conclusion);
+      setAppliedPreferences(saved.appliedPreferences || "");
+    } else {
+      setConclusionData(null);
+      setAppliedPreferences("");
+      clearStoredVerdict();
+    }
     setConclusionError(null);
-    setAppliedPreferences("");
     if (newIds.length >= 2) {
       setLoading(true);
     }
@@ -130,6 +157,7 @@ export function ComparePage() {
       navigate(`${pathname}?ids=${newIds.join(",")}`);
     } else {
       clearStoredCompareIds();
+      clearStoredVerdict();
       navigate(pathname);
     }
   };
@@ -173,6 +201,12 @@ export function ComparePage() {
       if (res?.conclusion) {
         setConclusionData(res.conclusion);
         setAppliedPreferences(userPreferences.trim());
+        saveStoredVerdict({
+          vehicleIds,
+          conclusion: res.conclusion,
+          userPreferences: userPreferences.trim(),
+          appliedPreferences: userPreferences.trim(),
+        });
         toast.success("AI comparative conclusion generated successfully!", "Verdict Ready");
       }
     } catch (err) {
