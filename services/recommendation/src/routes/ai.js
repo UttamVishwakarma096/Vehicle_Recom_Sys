@@ -110,6 +110,7 @@ export function createAiRoutes({
           model: "Nexon",
           approximateYear: "2023-2024",
           bodyType: "suv",
+          estimatedPrice: "₹8.15 Lakh - ₹15.80 Lakh",
           estimatedPriceSegment: "Mid-range",
           color: "White / Contrast Roof",
           confidence: 96,
@@ -129,11 +130,12 @@ Identify the vehicle's:
 2. Model (Specific model line, e.g., Nexon, Creta, Thar, Brezza, Fortuner, City, Model 3, etc.)
 3. Approximate Year or generation range (e.g., 2022-2024)
 4. Body Type (Must be one of: "suv", "sedan", "hatchback", "muv", "coupe", "convertible", "wagon", "pickup")
-5. Estimated Price Segment ("Budget", "Mid-range", "Premium", "Luxury")
-6. Dominant Color
-7. Confidence score between 0 and 100
-8. Key Visual Features (array of 2-4 distinctive cues such as grille, lights, profile)
-9. Brief summary (1-2 sentences)
+5. Estimated Price or Price Range (e.g., "₹8.15 Lakh - ₹15.80 Lakh" for Indian market or standard local currency equivalent)
+6. Estimated Price Segment ("Budget", "Mid-range", "Premium", "Luxury")
+7. Dominant Color
+8. Confidence score between 0 and 100
+9. Key Visual Features (array of 2-4 distinctive cues such as grille, lights, profile)
+10. Brief summary (1-2 sentences)
 
 Respond ONLY with valid JSON in this exact structure without markdown backticks or commentary:
 {
@@ -141,6 +143,7 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
   "model": "string",
   "approximateYear": "string",
   "bodyType": "string",
+  "estimatedPrice": "string",
   "estimatedPriceSegment": "string",
   "color": "string",
   "confidence": 95,
@@ -193,6 +196,38 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
           // If catalog search fails or downstream is unavailable, keep catalogMatches empty
           catalogMatches = [];
         }
+      }
+
+      // If catalog matches exist with verified ex-showroom pricing, compute verified price range
+      if (identification) {
+        const exShowroomAmounts = catalogMatches
+          .flatMap((m) => m.prices || [])
+          .filter((p) => p.type === "ex_showroom" && p.amount != null && !isNaN(Number(p.amount)))
+          .map((p) => Number(p.amount));
+
+        let verifiedPriceRange = null;
+        if (exShowroomAmounts.length > 0) {
+          const minPrice = Math.min(...exShowroomAmounts);
+          const maxPrice = Math.max(...exShowroomAmounts);
+          verifiedPriceRange = {
+            min: minPrice,
+            max: maxPrice,
+            formatted:
+              minPrice === maxPrice
+                ? `₹${minPrice.toLocaleString("en-IN")}`
+                : `₹${minPrice.toLocaleString("en-IN")} - ₹${maxPrice.toLocaleString("en-IN")}`,
+          };
+        }
+
+        if (verifiedPriceRange) {
+          identification.catalogPrice = verifiedPriceRange.formatted;
+        }
+        if (!identification.estimatedPrice && verifiedPriceRange) {
+          identification.estimatedPrice = verifiedPriceRange.formatted;
+        }
+        identification.price = verifiedPriceRange
+          ? verifiedPriceRange.formatted
+          : (identification.estimatedPrice || "Price unavailable");
       }
 
       return response.status(200).json({

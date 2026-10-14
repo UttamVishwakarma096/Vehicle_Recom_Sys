@@ -2318,3 +2318,36 @@ product features and database integration not started
 - Service tests (`npm test`): All 111 tests passed across services (`identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 49).
 - `npm run build`: Production bundle built cleanly with Vite in 2.21s.
 
+## 2026-10-14 — Vehicle Pricing in AI Identification Scanner
+
+### Scope and objective
+
+- After AI vehicle identification, present the price of the identified vehicle in the result view.
+- Update the Gemini prompt and schema to extract estimated price / price range (e.g. INR / local currency).
+- Compute verified ex-showroom price range from catalog candidates when matching vehicles exist in the catalog.
+- Prominently render the vehicle's price in the AI Scanner result card header (beside the confidence gauge) and as a dedicated card in the Specifications Matrix.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/src/routes/ai.js`**:
+   - Updated Gemini prompt and response JSON schema to request `"estimatedPrice": "string"` in addition to `"estimatedPriceSegment"`.
+   - Updated mock test identification fixture with `estimatedPrice: "₹8.15 Lakh - ₹15.80 Lakh"`.
+   - Post-processed catalog matches to compute verified ex-showroom price ranges (`catalogPrice`) and attached fallback `price` and `estimatedPrice` to `identification`.
+2. **`services/recommendation/test/ai.test.js`**:
+   - Updated `AI-03` test to assert `estimatedPrice`, `catalogPrice`, and `price` on identification results.
+3. **`client/src/pages/AiScannerPage.jsx`**:
+   - Added `price` metadata to `SAMPLES` presets.
+   - Added `displayPrice` derivation preferring verified catalog ex-showroom prices when available, falling back to Gemini's estimated market price range.
+   - Rendered a highlighted price badge in the identified vehicle card header alongside the confidence gauge.
+   - Expanded the Specifications Matrix to 5 items with a dedicated price card showing price and pricing type (catalog verified vs. market estimate).
+4. **`client/test/apiClients.test.js`**:
+   - Added unit test for `aiClient.identifyVehicle` asserting payload delivery and identification result with price fields.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `client` tests (`node --test`): All 27 tests passed.
+- `recommendation` tests (`node --test`): All 49 tests passed.
+- `npm run build`: Production bundle built cleanly with Vite in 1.28s.
+
+

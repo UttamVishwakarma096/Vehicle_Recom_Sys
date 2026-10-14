@@ -4,6 +4,7 @@ import { apiClient, ApiError } from "../src/services/apiClient.js";
 import { authClient } from "../src/services/authClient.js";
 import { catalogClient } from "../src/services/catalogClient.js";
 import { recommendationClient } from "../src/services/recommendationClient.js";
+import { aiClient } from "../src/services/aiClient.js";
 
 test("apiClient manages CSRF token and serializes JSON requests", async () => {
   apiClient.setCsrfToken("csrf-token-xyz");
@@ -265,6 +266,56 @@ test("recommendationClient.getAiComparisonConclusion serializes vehicleIds and o
     assert.equal(interceptedHeaders["x-gemini-api-key"], "custom-api-key");
     assert.equal(res.success, true);
     assert.equal(res.userPreferences, "Prefer high mileage and low maintenance");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("aiClient.identifyVehicle sends image payload and returns identification with vehicle price", async () => {
+  let interceptedUrl;
+  let interceptedBody;
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    interceptedUrl = url;
+    interceptedBody = JSON.parse(options.body);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        model: "gemini-3.5-flash",
+        identification: {
+          make: "Tata",
+          model: "Nexon",
+          approximateYear: "2023-2024",
+          bodyType: "suv",
+          price: "₹8.15 Lakh - ₹15.80 Lakh",
+          estimatedPrice: "₹8.15 Lakh - ₹15.80 Lakh",
+          estimatedPriceSegment: "Mid-range",
+          color: "White / Contrast Roof",
+          confidence: 96,
+        },
+        catalogMatches: [],
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  };
+
+  try {
+    const res = await aiClient.identifyVehicle({
+      image: "data:image/jpeg;base64,samplebase64",
+      mimeType: "image/jpeg",
+    });
+
+    assert.equal(interceptedUrl, "/api/v1/ai/identify-vehicle");
+    assert.equal(interceptedBody.image, "data:image/jpeg;base64,samplebase64");
+    assert.equal(interceptedBody.mimeType, "image/jpeg");
+    assert.equal(res.success, true);
+    assert.equal(res.identification.make, "Tata");
+    assert.equal(res.identification.price, "₹8.15 Lakh - ₹15.80 Lakh");
+    assert.equal(res.identification.estimatedPrice, "₹8.15 Lakh - ₹15.80 Lakh");
   } finally {
     globalThis.fetch = originalFetch;
   }

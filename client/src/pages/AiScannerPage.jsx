@@ -20,6 +20,7 @@ const SAMPLES = [
     make: "Tata",
     model: "Nexon",
     color: "#3B82F6",
+    price: "₹8.15 Lakh - ₹15.80 Lakh",
     description: "Modern compact SUV with high ground clearance stance",
   },
   {
@@ -27,6 +28,7 @@ const SAMPLES = [
     make: "Honda",
     model: "City",
     color: "#6366F1",
+    price: "₹11.80 Lakh - ₹16.35 Lakh",
     description: "Sleek aerodynamic sedan with low roofline",
   },
   {
@@ -34,6 +36,7 @@ const SAMPLES = [
     make: "Tesla",
     model: "Model 3",
     color: "#EF4444",
+    price: "₹45.00 Lakh - ₹60.00 Lakh",
     description: "Grille-less front fascia with panoramic glass silhouette",
   },
 ];
@@ -279,6 +282,65 @@ export function AiScannerPage() {
     }
   };
 
+  const displayPrice = (() => {
+    const ident = result?.identification;
+    if (!ident) return null;
+
+    if (ident.catalogPrice) {
+      return {
+        text: ident.catalogPrice,
+        subtitle: ident.estimatedPrice && ident.estimatedPrice !== ident.catalogPrice
+          ? `Est. Market: ${ident.estimatedPrice}`
+          : "Verified Ex-Showroom",
+        isCatalog: true,
+      };
+    }
+
+    if (result.catalogMatches?.length > 0) {
+      const amounts = result.catalogMatches
+        .flatMap((m) => m.prices || [])
+        .filter((p) => p.type === "ex_showroom" && p.amount != null && !isNaN(Number(p.amount)))
+        .map((p) => Number(p.amount));
+      if (amounts.length > 0) {
+        const min = Math.min(...amounts);
+        const max = Math.max(...amounts);
+        const text =
+          min === max
+            ? `₹${min.toLocaleString("en-IN")}`
+            : `₹${min.toLocaleString("en-IN")} - ₹${max.toLocaleString("en-IN")}`;
+        return {
+          text,
+          subtitle: ident.estimatedPrice && ident.estimatedPrice !== text
+            ? `Est. Market: ${ident.estimatedPrice}`
+            : "Verified Ex-Showroom",
+          isCatalog: true,
+        };
+      }
+    }
+
+    if (ident.estimatedPrice) {
+      return {
+        text: ident.estimatedPrice,
+        subtitle: "AI Market Estimate",
+        isCatalog: false,
+      };
+    }
+
+    if (ident.price) {
+      return {
+        text: ident.price,
+        subtitle: "Estimated Price",
+        isCatalog: false,
+      };
+    }
+
+    return {
+      text: "Price unavailable",
+      subtitle: "Unverified",
+      isCatalog: false,
+    };
+  })();
+
   return (
     <div className="py-4">
       {/* Header Banner */}
@@ -488,11 +550,23 @@ export function AiScannerPage() {
                 </p>
               </div>
 
-              {/* Confidence Gauge */}
-              <div className="sm:text-right">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#1F5A3A]/40 dark:border-[#D8FF2A]/30 bg-[#1F5A3A]/15 dark:bg-[#D8FF2A]/15 px-3.5 sm:px-4 py-1.5 text-sm sm:text-base font-extrabold text-[#1F5A3A] dark:text-[#D8FF2A] backdrop-blur-md">
-                  <span className="font-mono">{result.identification.confidence}%</span>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#1F5A3A] dark:text-[#D8FF2A]">
+              {/* Confidence & Price Badges */}
+              <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2.5 shrink-0">
+                {displayPrice && (
+                  <div className="inline-flex items-center gap-2 rounded-2xl border border-[#1F5A3A]/40 dark:border-[#D8FF2A]/30 bg-[#1F5A3A]/15 dark:bg-[#D8FF2A]/15 px-3.5 sm:px-4 py-1.5 backdrop-blur-md shadow-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      {displayPrice.isCatalog ? "Verified Price" : "Est. Price"}
+                    </span>
+                    <strong className="font-mono text-base sm:text-lg font-black text-[#1F5A3A] dark:text-[#D8FF2A]">
+                      {displayPrice.text}
+                    </strong>
+                  </div>
+                )}
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-[#2B2B2B]/80 px-3.5 py-1 text-xs font-semibold text-slate-700 dark:text-[#F5F5F5]">
+                  <span className="font-mono font-bold text-[#1F5A3A] dark:text-[#D8FF2A]">
+                    {result.identification.confidence}%
+                  </span>
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Confidence
                   </span>
                 </div>
@@ -500,7 +574,19 @@ export function AiScannerPage() {
             </div>
 
             {/* Specifications Matrix */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+              <div className="p-3.5 rounded-xl bg-[#1F5A3A]/10 dark:bg-[#D8FF2A]/10 border border-[#1F5A3A]/25 dark:border-[#D8FF2A]/25 backdrop-blur-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1F5A3A] dark:text-[#D8FF2A] block">
+                  {displayPrice?.isCatalog ? "Verified Price" : "Estimated Price"}
+                </span>
+                <strong className="text-sm font-mono font-black text-[#1F5A3A] dark:text-[#D8FF2A] block truncate">
+                  {displayPrice?.text || "N/A"}
+                </strong>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5 truncate">
+                  {displayPrice?.subtitle}
+                </span>
+              </div>
+
               <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-[#2B2B2B]/60 border border-slate-200/60 dark:border-white/10 backdrop-blur-sm">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
                   Body Type

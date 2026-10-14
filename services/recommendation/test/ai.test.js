@@ -142,6 +142,9 @@ test("AI-03: Authenticated user can submit image and receive identification with
   assert.equal(data.identification.make, "Tata");
   assert.equal(data.identification.model, "Nexon");
   assert.equal(data.identification.bodyType, "suv");
+  assert.ok(data.identification.estimatedPrice);
+  assert.ok(data.identification.price);
+  assert.equal(data.identification.catalogPrice, "₹8,00,000");
   assert.ok(Array.isArray(data.catalogMatches));
   assert.equal(data.catalogMatches.length, 1);
   assert.equal(data.catalogMatches[0].model, "Nexon");
