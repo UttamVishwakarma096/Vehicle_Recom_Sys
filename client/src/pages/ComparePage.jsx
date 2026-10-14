@@ -13,6 +13,11 @@ import { LoadingSpinner } from "../components/ui/LoadingSpinner.jsx";
 import { Alert } from "../components/ui/Alert.jsx";
 import { FaScaleBalanced, FaTrophy, FaLightbulb } from "react-icons/fa6";
 import { FiX, FiLock, FiZap, FiCheck, FiAlertCircle } from "react-icons/fi";
+import {
+  getStoredCompareIds,
+  saveStoredCompareIds,
+  clearStoredCompareIds,
+} from "../services/compareStorage.js";
 
 export function ComparePage() {
   const { pathname, search } = useLocation();
@@ -24,9 +29,29 @@ export function ComparePage() {
     const params = new URLSearchParams(
       search || (typeof window !== "undefined" ? window.location.search : "")
     );
+    if (!params.has("ids")) {
+      return getStoredCompareIds();
+    }
     const ids = params.get("ids");
     return ids ? ids.split(",").filter(Boolean) : [];
   }, [search]);
+
+  // Sync URL search params with localStorage to persist selected vehicles
+  useEffect(() => {
+    const params = new URLSearchParams(
+      search || (typeof window !== "undefined" ? window.location.search : "")
+    );
+    if (!params.has("ids")) {
+      const stored = getStoredCompareIds();
+      if (stored.length > 0) {
+        navigate(`${pathname}?ids=${stored.join(",")}`, { replace: true });
+      }
+    } else {
+      const ids = params.get("ids");
+      const parsed = ids ? ids.split(",").filter(Boolean) : [];
+      saveStoredCompareIds(parsed);
+    }
+  }, [search, pathname, navigate]);
 
   const [compareData, setCompareData] = useState(null);
   const [loading, setLoading] = useState(() => vehicleIds.length >= 2);
@@ -88,8 +113,10 @@ export function ComparePage() {
       setLoading(true);
     }
     if (newIds.length > 0) {
+      saveStoredCompareIds(newIds);
       navigate(`${pathname}?ids=${newIds.join(",")}`);
     } else {
+      clearStoredCompareIds();
       navigate(pathname);
     }
   };
@@ -280,15 +307,18 @@ export function ComparePage() {
           <div className="flex flex-col items-center justify-center text-center py-10">
             <FaScaleBalanced className="w-12 h-12 mb-3 text-[#1F5A3A] dark:text-[#D8FF2A]" />
             <h2 className="text-xl font-bold tracking-tight text-[#0A0A0A] dark:text-[#F5F5F5] font-display">
-              Select at Least 2 Vehicles to Compare
+              {vehicleIds.length === 1
+                ? "Select at Least 1 More Vehicle to Compare"
+                : "Select at Least 2 Vehicles to Compare"}
             </h2>
             <p className="mt-2 text-xs font-normal text-slate-500 dark:text-slate-400 max-w-md">
-              A valid comparison requires between 2 and 4 vehicles. Choose vehicles from the catalog
-              or use the picker below.
+              {vehicleIds.length === 1
+                ? "You currently have 1 vehicle selected. Add at least 1 more vehicle to compare specifications, pricing, and generate AI comparative analysis."
+                : "A valid comparison requires between 2 and 4 vehicles. Choose vehicles from the catalog or use the picker below."}
             </p>
             <div className="mt-6 flex flex-wrap gap-3 justify-center">
               <Button variant="primary" onClick={openAddModal}>
-                Select Vehicles from Catalog +
+                {vehicleIds.length === 1 ? "+ Add 2nd Vehicle" : "Select Vehicles from Catalog +"}
               </Button>
               <Link
                 to="/vehicles"

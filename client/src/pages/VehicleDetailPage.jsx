@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "../router/Router.jsx";
-import { useParams } from "../router/hooks.js";
+import { useParams, useNavigate } from "../router/hooks.js";
 import { catalogClient } from "../services/catalogClient.js";
 import { recommendationClient } from "../services/recommendationClient.js";
+import { addVehicleToCompare, getStoredCompareIds } from "../services/compareStorage.js";
 import { useAuth } from "../context/useAuth.js";
 import { useToast } from "../context/useToast.js";
 import { Badge } from "../components/ui/Badge.jsx";
@@ -15,6 +16,7 @@ import { FiShield } from "react-icons/fi";
 
 export function VehicleDetailPage({ params: propParams }) {
   const routerParams = useParams();
+  const navigate = useNavigate();
   const id = propParams?.id || routerParams?.id;
   const { isAuthenticated } = useAuth();
   const toast = useToast();
@@ -146,12 +148,33 @@ export function VehicleDetailPage({ params: propParams }) {
             )}
           </Button>
 
-          <Link
-            to={`/compare?ids=${vehicle.id}`}
-            className="rounded-xl bg-[#1F5A3A] hover:bg-[#16422a] text-white px-3.5 py-1.5 text-xs font-semibold shadow-md shadow-[#1F5A3A]/25 transition-all"
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              if (!isAuthenticated) {
+                toast.warning("Please sign in to compare vehicles.", "Authentication Required");
+                navigate("/login");
+                return;
+              }
+              const current = getStoredCompareIds();
+              if (current.includes(vehicle.id)) {
+                navigate(`/compare?ids=${current.join(",")}`);
+                return;
+              }
+              if (current.length >= 4) {
+                toast.warning("Comparison is capped at 4 vehicles maximum.", "Cap Reached");
+                navigate(`/compare?ids=${current.join(",")}`);
+                return;
+              }
+              const next = addVehicleToCompare(vehicle.id);
+              toast.success(`${vehicle.year} ${vehicle.make} ${vehicle.model} added to comparison.`, "Added to Compare");
+              navigate(`/compare?ids=${next.join(",")}`);
+            }}
+            className="!bg-[#1F5A3A] hover:!bg-[#16422a] !text-white !border-transparent shadow-md shadow-[#1F5A3A]/25"
           >
             Compare Vehicle
-          </Link>
+          </Button>
         </div>
       </div>
 

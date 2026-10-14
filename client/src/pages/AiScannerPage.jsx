@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "../router/Router.jsx";
+import { useNavigate } from "../router/hooks.js";
+import { useAuth } from "../context/useAuth.js";
 import { useToast } from "../context/useToast.js";
 import { aiClient } from "../services/aiClient.js";
+import { addVehicleToCompare, getStoredCompareIds } from "../services/compareStorage.js";
 import { Card } from "../components/ui/Card.jsx";
 import { Badge } from "../components/ui/Badge.jsx";
 import { Button } from "../components/ui/Button.jsx";
@@ -137,6 +140,8 @@ function generateSampleCanvas(sample, callback) {
 
 export function AiScannerPage() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const [imagePreview, setImagePreview] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -589,12 +594,32 @@ export function AiScannerPage() {
                         >
                           Details →
                         </Link>
-                        <Link
-                          to={`/compare?ids=${v.id}`}
-                          className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#2B2B2B]/80 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-[#F5F5F5] shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B]"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isAuthenticated) {
+                              toast.warning("Please sign in to compare vehicles.", "Authentication Required");
+                              navigate("/login");
+                              return;
+                            }
+                            const current = getStoredCompareIds();
+                            if (current.includes(v.id)) {
+                              navigate(`/compare?ids=${current.join(",")}`);
+                              return;
+                            }
+                            if (current.length >= 4) {
+                              toast.warning("Comparison is capped at 4 vehicles maximum.", "Cap Reached");
+                              navigate(`/compare?ids=${current.join(",")}`);
+                              return;
+                            }
+                            const next = addVehicleToCompare(v.id);
+                            toast.success(`${v.year} ${v.make} ${v.model} added to comparison.`, "Added to Compare");
+                            navigate(`/compare?ids=${next.join(",")}`);
+                          }}
+                          className="rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#2B2B2B]/80 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-[#F5F5F5] shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B] transition-colors cursor-pointer"
                         >
                           + Compare
-                        </Link>
+                        </button>
                       </div>
                     </Card>
                   );

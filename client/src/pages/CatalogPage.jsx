@@ -11,6 +11,11 @@ import { LoadingSpinner } from "../components/ui/LoadingSpinner.jsx";
 import { Alert } from "../components/ui/Alert.jsx";
 import { Button } from "../components/ui/Button.jsx";
 import { FiLock } from "react-icons/fi";
+import {
+  getStoredCompareIds,
+  saveStoredCompareIds,
+  clearStoredCompareIds,
+} from "../services/compareStorage.js";
 
 const DEFAULT_FILTERS = {
   page: 1,
@@ -49,7 +54,7 @@ export function CatalogPage() {
   const [error, setError] = useState(null);
 
   const [favoriteIds, setFavoriteIds] = useState(new Set());
-  const [selectedForCompare, setSelectedForCompare] = useState([]);
+  const [selectedForCompare, setSelectedForCompare] = useState(() => getStoredCompareIds());
 
   // Fetch favorites if user is authenticated
   useEffect(() => {
@@ -146,14 +151,17 @@ export function CatalogPage() {
       return;
     }
     setSelectedForCompare((prev) => {
+      let next;
       if (prev.includes(vehicleId)) {
-        return prev.filter((id) => id !== vehicleId);
-      }
-      if (prev.length >= 4) {
+        next = prev.filter((id) => id !== vehicleId);
+      } else if (prev.length >= 4) {
         toast.warning("Comparison is capped at 4 vehicles maximum.", "Cap Reached");
         return prev;
+      } else {
+        next = [...prev, vehicleId];
       }
-      return [...prev, vehicleId];
+      saveStoredCompareIds(next);
+      return next;
     });
   };
 
@@ -196,7 +204,10 @@ export function CatalogPage() {
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
               type="button"
-              onClick={() => setSelectedForCompare([])}
+              onClick={() => {
+                setSelectedForCompare([]);
+                clearStoredCompareIds();
+              }}
               className="rounded-xl bg-slate-100 dark:bg-[#0A0A0A]/60 hover:bg-slate-200 dark:hover:bg-[#0A0A0A] text-slate-700 dark:text-[#F5F5F5] px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
             >
               Clear

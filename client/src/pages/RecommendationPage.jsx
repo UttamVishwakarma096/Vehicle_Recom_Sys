@@ -3,6 +3,7 @@ import { Link } from "../router/Router.jsx";
 import { useNavigate } from "../router/hooks.js";
 import { recommendationClient } from "../services/recommendationClient.js";
 import { authClient } from "../services/authClient.js";
+import { addVehicleToCompare, getStoredCompareIds } from "../services/compareStorage.js";
 import { useAuth } from "../context/useAuth.js";
 import { useToast } from "../context/useToast.js";
 import { Card } from "../components/ui/Card.jsx";
@@ -736,13 +737,33 @@ export function RecommendationPage() {
                             </span>
                           )}
                         </Button>
-                        <Link
-                          to={`/compare?ids=${vehicle.id}`}
-                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#2B2B2B]/80 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-[#F5F5F5] shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B] transition-colors"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isAuthenticated) {
+                              toast.warning("Please sign in to compare vehicles.", "Authentication Required");
+                              navigate("/login");
+                              return;
+                            }
+                            const current = getStoredCompareIds();
+                            if (current.includes(vehicle.id)) {
+                              navigate(`/compare?ids=${current.join(",")}`);
+                              return;
+                            }
+                            if (current.length >= 4) {
+                              toast.warning("Comparison is capped at 4 vehicles maximum.", "Cap Reached");
+                              navigate(`/compare?ids=${current.join(",")}`);
+                              return;
+                            }
+                            const next = addVehicleToCompare(vehicle.id);
+                            toast.success(`${vehicle.year} ${vehicle.make} ${vehicle.model} added to comparison.`, "Added to Compare");
+                            navigate(`/compare?ids=${next.join(",")}`);
+                          }}
+                          className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#2B2B2B]/80 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-[#F5F5F5] shadow-xs hover:bg-white dark:hover:bg-[#2B2B2B] transition-colors cursor-pointer"
                         >
                           <FiPlus className="w-3 h-3" />
                           <span>Compare</span>
-                        </Link>
+                        </button>
                       </div>
 
                       <Link

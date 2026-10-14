@@ -2188,3 +2188,41 @@ product features and database integration not started
 - `npm run lint`: Passed with 0 errors and 0 warnings.
 - `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
 - `npm run build`: Production bundle built cleanly with Vite in 1.10s.
+
+## 2026-10-14 — Persistent Vehicle Comparison Across Navigation and Page Switching
+
+### Scope and objective
+
+- Fix issue where vehicles selected for comparison disappear when switching pages or navigating away and returning to `/compare`.
+- Implement robust local persistence using browser `localStorage` under the key `vehicle_compare_ids`.
+- Ensure clean lifecycle management across all entry points:
+  - `client/src/services/compareStorage.js`: Shared storage service to retrieve, save, deduplicate, cap (max 4 vehicles), and clear compared vehicle IDs safely.
+  - `client/src/pages/ComparePage.jsx`: Restores saved IDs from storage when navigated to without URL query string, keeps URL and storage synchronized, updates storage on vehicle addition/removal, and clears storage on "Clear All".
+  - `client/src/pages/CatalogPage.jsx`: Initializes comparison tray from storage and updates storage on selection toggle and clear.
+  - `client/src/pages/VehicleDetailPage.jsx`: "Compare Vehicle" appends vehicle to existing comparison set (up to 4) instead of overwriting with a single vehicle.
+  - `client/src/pages/RecommendationPage.jsx` & `client/src/pages/AiScannerPage.jsx`: "+ Compare" action appends vehicle to existing comparison set instead of overwriting.
+
+### Implemented behavior and files changed
+
+1. **`client/src/services/compareStorage.js`**:
+   - Implemented `getStoredCompareIds`, `saveStoredCompareIds`, `clearStoredCompareIds`, `addVehicleToCompare`, and `removeVehicleFromCompare`.
+   - Guaranteed deduplication, max 4 vehicle cap, and safe fallback for non-browser/SSR or quota-restricted environments.
+2. **`client/test/compareStorage.test.js`**:
+   - Added 7 unit tests covering read, write, deduplication, cap enforcement, removal, and clear operations.
+3. **`client/src/pages/ComparePage.jsx`**:
+   - Derives `vehicleIds` from query string or stored IDs.
+   - Synchronizes URL query parameters with `localStorage`.
+   - Clears storage on explicit "Clear All".
+   - Enhanced under-minimum state when 1 vehicle is selected ("Select at Least 1 More Vehicle to Compare").
+4. **`client/src/pages/CatalogPage.jsx`**:
+   - Initializes `selectedForCompare` from `getStoredCompareIds()`.
+   - Synchronizes storage on toggle and clear.
+5. **`client/src/pages/VehicleDetailPage.jsx`**, **`RecommendationPage.jsx`**, **`AiScannerPage.jsx`**:
+   - Updated comparison buttons to append vehicle to existing comparison and persist in storage.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `client` tests (`node --test`): All 22 tests passed (including 7 new unit tests for compareStorage).
+- Service tests (`npm test`): All 132 tests passed across all 4 workspaces (`client`: 22, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly with Vite in 1.36s.
