@@ -150,14 +150,21 @@ export function AiScannerPage() {
   const [dragActive, setDragActive] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  // Rate limiter cooldown countdown timer
+  // Rate limiter cooldown countdown timer (refills token in 15 seconds)
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
-      setCooldown((prev) => Math.max(0, prev - 1));
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          toast.info("Token refilled! You can scan a vehicle now.", "Token Ready");
+          setError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, [cooldown]);
+  }, [cooldown, toast]);
 
   const fileInputRef = useRef(null);
 
@@ -235,12 +242,14 @@ export function AiScannerPage() {
         "Vehicle Identified",
       );
     } catch (err) {
-      if (err.status === 429) {
-        setCooldown(15);
-        setError("AI search rate limit reached. Please wait a moment.");
+      if (err.status === 429 || err.code === "RATE_LIMIT_EXCEEDED") {
+        const retrySec = err.retryAfter && !isNaN(err.retryAfter) ? Math.max(1, Number(err.retryAfter)) : 15;
+        setCooldown(retrySec);
+        const warningMsg = `Rate limit reached. Token bucket is empty. Tokens refill in ${retrySec} seconds.`;
+        setError(warningMsg);
         toast.warning(
-          "Rate limit reached. Please wait a moment.",
-          "Rate Limit",
+          warningMsg,
+          "Token Bucket Empty",
         );
       } else {
         const rawMsg = err.message || "";
@@ -419,7 +428,7 @@ export function AiScannerPage() {
                   "Analyzing Visual Features..."
                 ) : cooldown > 0 ? (
                   <span className="inline-flex items-center gap-1.5 font-mono">
-                    <span>Rate Limit: Refilling ({cooldown}s)...</span>
+                    <span>Token Bucket Empty: Refilling ({cooldown}s)...</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">
@@ -433,10 +442,21 @@ export function AiScannerPage() {
         </div>
       </div>
 
-      {/* Error Banner */}
+      {/* Error / Rate Limit Warning Banner */}
       {error && !analyzing && (
-        <Alert title="Identification Error" variant="error" className="mb-6">
-          {error}
+        <Alert
+          title={cooldown > 0 ? "Rate Limit Warning: Token Bucket Empty" : "Identification Error"}
+          variant={cooldown > 0 ? "warning" : "error"}
+          className="mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span>{error}</span>
+            {cooldown > 0 && (
+              <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 shrink-0">
+                Refilling in {cooldown}s...
+              </span>
+            )}
+          </div>
         </Alert>
       )}
 

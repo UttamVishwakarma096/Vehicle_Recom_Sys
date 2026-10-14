@@ -2260,3 +2260,28 @@ product features and database integration not started
 - `client` tests (`node --test`): All 23 tests passed.
 - `recommendation` tests (`node --test`): All 49 tests passed (including new `COMP-04b`).
 - `npm run build`: Production bundle built cleanly with Vite in 1.62s.
+
+## 2026-10-14 — AI Detection Token Bucket Empty Warning and 15s Refill Notification
+
+### Scope and objective
+
+- When the Token Bucket algorithm detects that tokens are depleted for AI vehicle identification, present a clear rate limit warning indicating the token bucket is empty.
+- Show live refill cooldown countdown and automatically restore scanning capabilities once tokens refill after 15 seconds.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/src/rateLimit.js`**:
+   - Updated 429 `RATE_LIMIT_EXCEEDED` response message to explicitly indicate: `"AI search rate limit reached. Token bucket is empty. Tokens refill in <X> seconds. Please wait before trying again."`.
+2. **`client/src/pages/AiScannerPage.jsx`**:
+   - In `runAnalysis`: On 429 / `RATE_LIMIT_EXCEEDED`, sets countdown to `err.retryAfter || 15`, displays warning toast `"Token Bucket Empty"` and sets warning message `"Rate limit reached. Token bucket is empty. Tokens refill in <X> seconds."`.
+   - Updated the alert banner to show a styled `warning` alert with title `"Rate Limit Warning: Token Bucket Empty"` along with a live `"Refilling in <X>s..."` badge.
+   - Updated scan button during cooldown to display `"Token Bucket Empty: Refilling (<X>s)..."`.
+   - Enhanced the countdown timer effect so that when the timer reaches 0, it displays an informative toast `"Token refilled! You can scan a vehicle now."`, clears the warning alert, and re-enables the scan button.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `client` tests (`node --test`): All 23 tests passed.
+- `vehicle-catalog` tests (`node --test`): All 34 tests passed.
+- `recommendation` tests (`node --test`): All 49 tests passed (including `AI-04` and `AI-05` token bucket rate limiter refill tests).
+- `npm run build`: Production bundle built cleanly with Vite in 5.29s.

@@ -135,7 +135,7 @@ export function createRateLimiterMiddleware(limiter = new TokenBucketRateLimiter
         new HttpError(
           429,
           "RATE_LIMIT_EXCEEDED",
-          `AI search rate limit reached. A new token refills every 15 seconds. Please wait ${result.retryAfterSeconds}s before trying again.`,
+          `AI search rate limit reached. Token bucket is empty. Tokens refill in ${result.retryAfterSeconds} seconds. Please wait before trying again.`,
         ),
       );
     }
