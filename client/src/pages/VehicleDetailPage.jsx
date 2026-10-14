@@ -10,7 +10,7 @@ import { Card } from "../components/ui/Card.jsx";
 import { Button } from "../components/ui/Button.jsx";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner.jsx";
 import { Alert } from "../components/ui/Alert.jsx";
-import { FaStar, FaRegStar } from "react-icons/fa6";
+import { FaStar, FaRegStar, FaCarSide } from "react-icons/fa6";
 import { FiShield } from "react-icons/fi";
 
 export function VehicleDetailPage({ params: propParams }) {
@@ -23,6 +23,7 @@ export function VehicleDetailPage({ params: propParams }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -157,24 +158,68 @@ export function VehicleDetailPage({ params: propParams }) {
       {/* Main Vehicle Header Card */}
       <Card className="mb-6 sm:mb-8 p-4 sm:p-6 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {vehicle.imageUrl && (
-            <div className="lg:col-span-5 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#1E1E1E] border border-slate-200/60 dark:border-white/10 shadow-sm h-56 sm:h-64 lg:h-72 w-full">
-              <img
-                src={vehicle.imageUrl}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                onError={(e) => {
-                  e.currentTarget.parentElement.style.display = "none";
-                }}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {(() => {
+            const allImages = Array.isArray(vehicle.images) && vehicle.images.length > 0
+              ? vehicle.images
+              : (vehicle.imageUrl ? [vehicle.imageUrl] : []);
+            const currentImage = allImages[activeImageIndex] || allImages[0] || null;
 
-          <div
-            className={`${
-              vehicle.imageUrl ? "lg:col-span-7" : "lg:col-span-12"
-            } flex flex-col justify-between gap-6`}
-          >
+            return (
+              <div className="lg:col-span-5 flex flex-col gap-3">
+                <div className="rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#1E1E1E] border border-slate-200/60 dark:border-white/10 shadow-sm h-56 sm:h-64 lg:h-72 w-full relative group">
+                  {currentImage ? (
+                    <img
+                      src={currentImage}
+                      alt={`${vehicle.make} ${vehicle.model}`}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        if (e.currentTarget.nextElementSibling) {
+                          e.currentTarget.nextElementSibling.style.display = "flex";
+                        }
+                      }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : null}
+                  <div
+                    className={`w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#252525] dark:to-[#1a1a1a] ${
+                      currentImage ? "hidden" : "flex"
+                    }`}
+                  >
+                    <FaCarSide className="w-16 h-16 mb-2 opacity-40 text-slate-400" />
+                    <span className="text-xs font-mono uppercase tracking-wider opacity-60">
+                      {vehicle.make} {vehicle.model}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Thumbnail carousel if multiple images exist */}
+                {allImages.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    {allImages.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveImageIndex(idx)}
+                        className={`relative w-16 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                          activeImageIndex === idx
+                            ? "border-[#1F5A3A] dark:border-[#D8FF2A] scale-105 shadow-sm"
+                            : "border-slate-200 dark:border-white/10 opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Thumbnail ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <div className="lg:col-span-7 flex flex-col justify-between gap-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
@@ -361,9 +406,8 @@ export function VehicleDetailPage({ params: propParams }) {
         </div>
 
         <p className="text-xs font-normal text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-          In compliance with our ground truth architecture, every catalog value is traceable to
-          an approved data source. Unreported values remain explicit and are never populated with
-          synthetic estimates.
+          Every specification and price point on VehicleWise is independently verified and traceable to
+          official documentation. Any unreported values are explicitly disclosed and never fabricated.
         </p>
 
         {vehicle.dataSources && vehicle.dataSources.length > 0 ? (

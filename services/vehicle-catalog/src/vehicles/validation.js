@@ -16,6 +16,7 @@ const ALLOWED_VEHICLE_KEYS = new Set([
   "transmission",
   "seatingCapacity",
   "imageUrl",
+  "images",
   "specifications",
   "prices",
   "dataSources",
@@ -232,6 +233,32 @@ export function validateVehiclePayload(body, { isUpdate = false } = {}) {
         code: "INVALID_VALUE",
         message: "Image URL must be a non-empty valid URL or relative path.",
       });
+    }
+  }
+
+  // Images (array of image URLs)
+  if (body.images !== undefined && body.images !== null) {
+    if (!Array.isArray(body.images)) {
+      fieldErrors.push({
+        field: "images",
+        code: "INVALID_VALUE",
+        message: "Images must be an array of image URLs or relative paths.",
+      });
+    } else {
+      for (let i = 0; i < body.images.length; i++) {
+        const img = body.images[i];
+        if (
+          typeof img !== "string" ||
+          img.trim().length === 0 ||
+          (!isValidHttpUrl(img) && !img.startsWith("/"))
+        ) {
+          fieldErrors.push({
+            field: `images[${i}]`,
+            code: "INVALID_VALUE",
+            message: `Image at index ${i} must be a non-empty valid URL or relative path.`,
+          });
+        }
+      }
     }
   }
 

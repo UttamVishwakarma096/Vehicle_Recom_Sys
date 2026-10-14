@@ -6,6 +6,7 @@ import { createServiceAuthMiddleware } from "./auth/serviceAuth.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createUsersRouter } from "./routes/users.js";
 import { createInternalUsersRouter } from "./routes/internal.js";
+import { TokenBucketRateLimiter } from "./rateLimit.js";
 
 export const SERVICE_NAME = "identity-user";
 export const DEFAULT_PORT = 4001;
@@ -18,6 +19,8 @@ export function createApp({
   sessionService,
   allowedOrigins = [],
   internalSecret,
+  loginLimiter,
+  registerLimiter,
 } = {}) {
   const activeSessionService =
     sessionService ||
@@ -33,10 +36,26 @@ export function createApp({
 
   const serviceAuth = createServiceAuthMiddleware({ internalSecret });
 
+  const activeLoginLimiter =
+    loginLimiter ||
+    new TokenBucketRateLimiter({
+      capacity: 5,
+      refillIntervalMs: 12_000,
+    });
+  const activeRegisterLimiter =
+    registerLimiter ||
+    new TokenBucketRateLimiter({
+      capacity: 5,
+      refillIntervalMs: 15_000,
+    });
+
   return createFoundationApp(
     SERVICE_NAME,
     logger,
     (app) => {
+      app.loginLimiter = activeLoginLimiter;
+      app.registerLimiter = activeRegisterLimiter;
+
       app.get("/", (_request, response) => {
         response.json({
           service: SERVICE_NAME,
@@ -50,6 +69,8 @@ export function createApp({
           tokenService,
           sessionService: activeSessionService,
           authenticate,
+          loginLimiter: activeLoginLimiter,
+          registerLimiter: activeRegisterLimiter,
         }),
       );
 

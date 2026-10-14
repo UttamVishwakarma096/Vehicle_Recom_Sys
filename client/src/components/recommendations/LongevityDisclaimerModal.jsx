@@ -7,19 +7,18 @@ export function LongevityDisclaimerModal({ isOpen, onClose }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Longevity Prediction Evidence Gate"
+      title="Vehicle Lifespan & Longevity Notice"
       maxWidth="max-w-lg"
     >
       <div className="flex flex-col gap-4 text-xs font-normal leading-relaxed text-slate-700 dark:text-slate-300">
         <div className="flex items-center gap-2">
-          <Badge variant="red" size="sm">STATUS: DISABLED (503)</Badge>
-          <span className="font-semibold text-slate-900 dark:text-white">Evidence Gate Not Passed</span>
+          <Badge variant="lime" size="sm">Verification In Progress</Badge>
+          <span className="font-semibold text-slate-900 dark:text-white">Strict Data Quality Standards</span>
         </div>
 
         <p>
-          In accordance with our strict product architecture and <strong>ML-01</strong> guidelines,
-          predictive vehicle longevity estimation is disabled by default until verified evidence gates
-          pass.
+          In accordance with our strict data integrity policy, long-term vehicle longevity and lifespan
+          predictions are held to rigorous statistical standards before being presented to buyers.
         </p>
 
         <div className="rounded-xl border border-rose-200/80 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 backdrop-blur-sm">
@@ -27,16 +26,15 @@ export function LongevityDisclaimerModal({ isOpen, onClose }) {
             Zero Fabricated Estimates
           </strong>
           <p className="text-xs text-rose-950 dark:text-rose-200">
-            The Recommendation Service will never fabricate lifespans, invent maintenance curves,
-            or present synthetic statistical estimates without audited, reproducible ground truth data.
+            VehicleWise will never fabricate vehicle lifespans, invent maintenance curves,
+            or present synthetic statistical estimates without audited, real-world data.
           </p>
         </div>
 
         <p>
-          Our rule-based engine (<code className="font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded-md">rules-v1</code>)
-          strictly evaluates verified catalog attributes (budget fit, reported mileage, and engine power).
-          Dimensions without authoritative evaluation scales are honestly disclosed under
-          <strong> Missing Ground Truth Data</strong>.
+          Our recommendation engine strictly evaluates verified catalog specifications (budget fit,
+          reported fuel efficiency, and engine performance). Any missing or unverified attributes are
+          always transparently flagged so you can make informed decisions.
         </p>
 
         <div className="mt-2 flex justify-end">

@@ -31,6 +31,14 @@ export function formatVehicle(vehicle) {
   if (doc.imageUrl !== undefined && doc.imageUrl !== null) {
     result.imageUrl = doc.imageUrl;
   }
+  if (Array.isArray(doc.images) && doc.images.length > 0) {
+    result.images = doc.images;
+    if (!result.imageUrl) {
+      result.imageUrl = doc.images[0];
+    }
+  } else if (result.imageUrl) {
+    result.images = [result.imageUrl];
+  }
   if (doc.specifications !== undefined && doc.specifications !== null) {
     result.specifications = doc.specifications;
   }

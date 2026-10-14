@@ -1888,15 +1888,303 @@ product features and database integration not started
 - `npm test`: All 120 tests passed across all 4 workspaces.
 - `npm run build --workspace @vehicle/client`: Vite production build passed cleanly in 3.00s.
 
+## 2026-10-14 — Header Unauthenticated Feature Tooltip ("Needs login")
 
+### Scope and objective
 
+- Provide clear visual guidance and accessibility indicators on protected navigation items ("Recommendations" and "Compare") in the header when unauthenticated ("without login").
+- Display a sleek floating tooltip stating "Needs login" on hover and keyboard focus in desktop navigation.
+- Add an explicit "Needs login" badge pill in mobile drawer navigation.
+- Provide accessible `title` and `aria-label` attributes for screen readers and touch fallback.
 
+### Implemented behavior and files changed
 
+1. **`client/src/components/layout/GuestHeader.jsx`**:
+   - Updated desktop navigation links to wrap each item in a `relative group` container.
+   - Added `title="Needs login"` and accessible `aria-label` to protected links.
+   - Added a themed, floating glass-dark tooltip (`role="tooltip"`) with upward arrow and lock icon that appears smoothly on hover (`group-hover:opacity-100`) and keyboard focus (`group-focus-within:opacity-100`).
+   - Added an inline "Needs login" badge with a lock icon in the mobile drawer navigation.
+2. **`client/src/components/layout/Navbar.jsx`**:
+   - Marked `/recommendations` and `/compare` as `isProtected: !isAuthenticated`.
+   - Added matching floating tooltip on hover/focus in desktop view and badge in mobile view.
 
+### Validation
 
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm run build`: Passed across all 4 workspaces (`@vehicle/client`, `@vehicle/identity-user`, `@vehicle/vehicle-catalog`, `@vehicle/recommendation`).
+- `npm test --workspace @vehicle/client`: All 12 unit tests passed cleanly.
 
+## 2026-10-14 — Landing Page Search Bar Debouncing & Live Quick Results Dropdown
 
+### Scope and objective
 
+- Implement 300ms input debouncing on the landing page hero search bar to eliminate wasteful keystroke requests.
+- Provide real-time quick results preview dropdown directly beneath the hero search input as the user types without pressing enter.
+- Keep the catalog preview section ("Explore Verified Vehicles") synchronized with the debounced search term with dedicated filter indicator and clear actions.
+- Provide click-outside and Escape key dismissal for the search dropdown.
 
+### Implemented behavior and files changed
 
+1. **`client/src/hooks/useDebounce.js`**:
+   - Created reusable `useDebounce` hook (default 300ms delay) and standalone `debounce(fn, delay)` helper with `.cancel()`.
+2. **`client/test/debounce.test.js`**:
+   - Added unit tests for debounced delay timing and cancellation execution.
+3. **`client/src/pages/HomePage.jsx`**:
+   - Integrated `useDebounce(searchQuery, 300)`.
+   - Added floating quick-matches dropdown (`isSearchDropdownOpen`) displaying matching vehicle thumbnails, names, variants, body types, and prices.
+   - Connected Section 4 catalog query to `debouncedQuery` with active filter indicator and empty state reset button.
+   - Handled click-outside and Escape key dismissal using `useRef` on the search container.
+   - Cleanly derived loading and query states to satisfy React Compiler / ESLint `react-hooks/set-state-in-effect` requirements.
 
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 122 tests passed across all 4 workspaces (`client`: 14, `identity-user`: 26, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly for client and all services in 4.14s.
+
+## 2026-10-14 — Authentication & Security Rate Limiting (Brute Force Protection)
+
+### Scope and objective
+
+- Protect sensitive authentication endpoints (`/api/v1/auth/login` and `/api/v1/auth/register`) against brute force and credential stuffing attacks using an in-memory Token Bucket rate limiter per `AGENTS.md` microservice boundaries.
+- Adhere strictly to the three-service architecture: no external caches or queue dependencies (e.g. Redis) added.
+- Provide standards-compliant HTTP 429 `RATE_LIMIT_EXCEEDED` error responses with `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+- Enhance client `apiClient` to extract `Retry-After` seconds on 429 responses and attach to `ApiError`.
+- Implement client-side UX in `AuthPage.jsx`: live countdown timer, glowing security lockout banner, and disabled submit button reflecting remaining lockout seconds (`Rate limited (Xs)`).
+- Ensure test isolation across all services with clean reset hooks.
+
+### Implemented behavior and files changed
+
+1. **`services/identity-user/src/rateLimit.js`**:
+   - Created `TokenBucketRateLimiter` class with configurable token capacity, continuous refill, thread-safe consumption, and automatic idle bucket cleanup.
+   - Implemented `createRateLimiterMiddleware` attaching RFC rate limit headers and throwing `HttpError(429, "RATE_LIMIT_EXCEEDED")`.
+2. **`services/identity-user/src/routes/auth.js`**:
+   - Applied composite IP + email rate limiting on `POST /api/v1/auth/login` (capacity 5 attempts, refilling 1 token every 12s).
+   - Applied client IP rate limiting on `POST /api/v1/auth/register` (capacity 5 attempts, refilling 1 token every 15s).
+   - Exposed `loginLimiter` and `registerLimiter` injection options in `createAuthRouter`.
+3. **`services/identity-user/src/app.js`**:
+   - Initialized and attached `app.loginLimiter` and `app.registerLimiter` to the Express application instance for test reset hooks and configuration.
+4. **`services/identity-user/package.json`**:
+   - Added `node --check src/rateLimit.js` syntax verification to build script.
+5. **`services/identity-user/test/auth.test.js` & `services/identity-user/test/user.test.js`**:
+   - Added `AUTH-06` verifying login rate limiting, 429 status code, and header contract (`Retry-After`, `X-RateLimit-*`).
+   - Added `AUTH-07` verifying registration rate limiting and 429 response.
+   - Added limiter reset in `beforeEach` to guarantee test isolation.
+6. **`client/src/services/apiClient.js` & `client/test/apiClients.test.js`**:
+   - Added `retryAfter = null` property to `ApiError` class, parsed from response headers.
+   - Added unit test in `apiClients.test.js` verifying 429 parsing.
+7. **`client/src/pages/AuthPage.jsx`**:
+   - Added `loginCooldown` and `registerCooldown` countdown states with `setInterval` timers.
+   - Added security lockout alert banners featuring `FiShield` and remaining seconds.
+   - Disabled submit buttons during cooldown with reactive button labels.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production builds passed across all workspaces in 3.11s.
+
+## 2026-10-14 — Vehicle Catalog Images Schema Attribute & Image Rendering Integration
+
+### Scope and objective
+
+- Investigate why vehicle images were not rendering in the vehicle card (`VehicleCard.jsx`) and vehicle details page (`VehicleDetailPage.jsx`).
+- Verify and update `vehicle_catalog` database schema, validation, formatting, and seeder to support both `imageUrl` (string) and `images` (array of image URLs).
+- Ensure client-side UI components cleanly support both attributes with thumbnail carousel, lazy loading, and branded fallback placeholders.
+- Perform database update on MongoDB Atlas collection to ensure all 22 documents store verified `imageUrl` and `images` array.
+
+### Implemented behavior and files changed
+
+1. **Root Cause Analysis**:
+   - The Mongoose `vehicleSchema` previously defined `imageUrl: String` but not `images: [String]`.
+   - In `services/vehicle-catalog/src/seed.js`, the `existing` vehicle update path omitted updating `existing.imageUrl`, causing documents in the live MongoDB Atlas cluster to have `imageUrl: undefined`.
+   - `VehicleCard.jsx` and `VehicleDetailPage.jsx` strictly checked `vehicle.imageUrl` and did not render images when missing.
+2. **`services/vehicle-catalog/src/models.js`**:
+   - Added `images: { type: [String], default: undefined }` to `vehicleSchema` with Mongoose `strict: "throw"`.
+3. **`services/vehicle-catalog/src/vehicles/validation.js`**:
+   - Added `"images"` to `ALLOWED_VEHICLE_KEYS`.
+   - Added validation for `body.images`: must be an array of non-empty strings with valid HTTP URL or relative path formatting.
+4. **`services/vehicle-catalog/src/routes/admin.js`**:
+   - Added `"images"` to `allowedKeys` in PATCH vehicle route.
+5. **`services/vehicle-catalog/src/vehicles/formatting.js`**:
+   - Updated `formatVehicle` projection to expose both `imageUrl` and `images`. If `doc.images` exists, `result.images = doc.images` and `result.imageUrl` defaults to `doc.images[0]`. If `doc.imageUrl` exists, `result.images` defaults to `[doc.imageUrl]`.
+6. **`services/vehicle-catalog/src/apply-images.js` & `services/vehicle-catalog/src/seed.js`**:
+   - Updated `seed.js` to preserve and set `imageUrl` and `images` on both new and existing documents.
+   - Updated and executed `apply-images.js` against MongoDB Atlas, successfully updating all 22 vehicle records with `imageUrl` and `images` array.
+7. **Client Components**:
+   - `client/src/components/catalog/VehicleCard.jsx`: Updated to resolve `cardImage = vehicle.imageUrl || vehicle.images?.[0]`.
+   - `client/src/pages/VehicleDetailPage.jsx`: Added multi-image gallery with thumbnail selector (`activeImageIndex`), hero preview zoom, and elegant `<FaCarSide>` fallback.
+   - `client/src/pages/HomePage.jsx`: Updated hero search dropdown preview and Section 4 catalog cards to use resolved image.
+   - `client/src/pages/ComparePage.jsx`: Updated vehicle comparison matrix header to resolve image from `v.imageUrl || v.images?.[0]`.
+8. **Tests (`services/vehicle-catalog/test/database.test.js` & `public.test.js`)**:
+   - Added test assertions verifying `images` array persistence and public projection in `CAT-02`.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production builds passed across all workspaces.
+- MongoDB Atlas verification: Confirmed all 22 vehicle documents have verified `imageUrl` and `images` populated.
+
+## 2026-10-14 — User-Facing UX Refinement: Removal of Internal Developer Terminology
+
+### Scope and objective
+
+- Audit and eliminate internal developer and engineering jargon from user-facing screens and layouts (e.g. "3 isolated microservices", "HttpOnly session shield", service port listings, internal algorithm names, and architecture policy badges).
+- Replace developer-oriented copy with buyer-centric value propositions emphasizing verified vehicle intelligence, zero commercial bias, and bank-grade privacy.
+
+### Implemented behavior and files changed
+
+1. **`client/src/components/layout/Footer.jsx`**:
+   - Replaced "System Architecture" and the internal service port listings (`Port 4001`, `Port 4002`, `Port 4003`) with user-centric "Core Capabilities":
+     - "100% Verified Specifications & Pricing"
+     - "Gemini Multimodal AI Car Scanner"
+     - "Objective Preference Match Engine"
+   - Replaced bottom badge "3-Service Architecture" with "Verified Data Guarantee".
+2. **`client/src/pages/HomePage.jsx`**:
+   - Metric card 4: Replaced "3 Isolated Microservices / Independent DB boundaries" with "0 Commercial Bias / Objective buyer-first advice".
+   - Section 6 feature cards: Replaced "Microservices / Isolated Service Boundaries / Three independently deployable domains..." with "Buyer First / Zero Commercial Bias / No sponsored rankings, dealer kickbacks, or promotional boosting. Every match is ranked strictly on merit and your personal criteria."
+   - Section 7 data policy: Replaced developer fixture notice with buyer-facing "Catalog Data Integrity Guarantee".
+   - Refined algorithm description from "calculated in the backend engine" to "calculated directly against verified specifications".
+3. **`client/src/pages/AuthPage.jsx`**:
+   - Replaced "HttpOnly Session Shield" badge with "Encrypted & Secure Access".
+   - Replaced "3 Microservices Architecture" footer text with "Verified Automotive Intelligence".
+   - Replaced "Passwords hashed with adaptive bcrypt (work factor 12) and sessions protected by strict SameSite HttpOnly cookies" with "Your account credentials and activity are safeguarded by modern encryption and strict session security. Zero third-party data tracking."
+   - Softened security cooldown banner text to friendly guidance ("Security cooldown active" / "Too many registration requests. Please wait Xs before trying again.").
+4. **`client/src/components/recommendations/LongevityDisclaimerModal.jsx`**:
+   - Replaced developer error codes ("STATUS: DISABLED (503)", "ML-01 guidelines", "rules-v1") with buyer-friendly transparency: "Vehicle Lifespan & Longevity Notice", "Verification In Progress", and "Strict Data Quality Standards".
+5. **`client/src/pages/VehicleDetailPage.jsx`**:
+   - Refined data provenance copy to focus on independent verification and absence of fabricated estimates.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly for client and all services in 1.58s.
+- Clean grep scan: Verified zero occurrences of "microservice", "httponly", "bcrypt", "samesite", or "port 400" in `client/src`.
+
+## 2026-10-14 — Comparison AI Verdict User Experience & Safe Error Wording
+
+### Scope and objective
+
+- Remove developer jargon (Token Bucket badge, refilling mentions, algorithm terminology) from the "AI Comparative Verdict & Buying Conclusion" card in `ComparePage.jsx`.
+- Simplify backend 503 error messages in the recommendation service (`services/recommendation/src/routes/compare.js` and `services/recommendation/src/routes/ai.js`) when `GEMINI_API_KEY` is unavailable: replace internal environment variable instructions with safe user-facing wording: `"Gemini AI comparison conclusion is currently unavailable."`
+
+### Implemented behavior and files changed
+
+1. **`client/src/pages/ComparePage.jsx`**:
+   - Removed `<Badge variant="forest" size="sm">Token Bucket: 1 Token / 15s</Badge>` from the "AI Comparative Verdict & Buying Conclusion" card header.
+   - Replaced countdown text `Refilling ({conclusionCooldown}s)...` and `Refilling Token ({conclusionCooldown}s)...` with user-friendly countdown `Please wait ({conclusionCooldown}s)...`.
+   - Updated rate limit error and toast notices from mentioning token replenishment to friendly retry guidance (`"AI comparison rate limit reached. Please wait a few seconds before trying again."`).
+2. **`services/recommendation/src/routes/compare.js`**:
+   - Updated HTTP 503 error message when API key is missing to `"Gemini AI comparison conclusion is currently unavailable."`, eliminating internal configuration guidance referencing `GEMINI_API_KEY`.
+3. **`services/recommendation/src/routes/ai.js`**:
+   - Updated HTTP 503 error message when API key is missing to `"Gemini AI vehicle identification is currently unavailable."`, keeping error messages consistent and free of internal server environment variable names.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `client build`: Production bundle built cleanly with Vite in 1.93s.
+- Clean grep scan: Verified 0 occurrences of "token" or "bucket" in `client/src/pages/ComparePage.jsx`.
+
+## 2026-10-14 — Gemini Multi-Model Configuration & API Key Implementation
+
+### Scope and objective
+
+- Implement Google Gemini API key configuration in the recommendation service environment (`GEMINI_API_KEY`).
+- Support configurable Gemini models (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`) via `GEMINI_MODEL` environment variable and per-request selection across AI vehicle scanning and comparative verdict generation.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/.env` & `.env.example`**:
+   - Configured `GEMINI_API_KEY` in `services/recommendation/.env`.
+   - Added `GEMINI_MODEL=gemini-1.5-flash` setting with documented supported options (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`).
+2. **`services/recommendation/src/routes/ai.js`**:
+   - Replaced hardcoded model with configurable `DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash"`.
+   - Added validation against `SUPPORTED_MODELS` allowlist (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`, `gemini-2.5-flash`).
+   - Allowed optional client-specified `model` override in `POST /api/v1/ai/identify-vehicle`.
+   - Included selected active model in response JSON.
+3. **`services/recommendation/src/routes/compare.js`**:
+   - Configured `DEFAULT_MODEL` with `process.env.GEMINI_MODEL || "gemini-1.5-flash"`.
+   - Allowed optional client `model` override in `POST /api/v1/compare/conclusion`.
+   - Included selected active model in response JSON.
+4. **`client/src/pages/AiScannerPage.jsx` & `HomePage.jsx`**:
+   - Updated UI labels and badges to dynamically reflect Gemini Multimodal AI rather than obsolete hardcoded strings.
+
+### Validation
+
+- Tested upstream connectivity: Observed Google Generative Language API response for provided key: returned HTTP 403 `PERMISSION_DENIED: Consumer has been suspended` (project 86892891983).
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly with Vite in 1.49s.
+
+## 2026-10-14 — Sanitization of Gemini Upstream Error Responses
+
+### Scope and objective
+
+- Prevent exposure of upstream provider error payloads (including raw Google API JSON responses, consumer suspension details, project IDs, and API key references) to frontend users.
+- Ensure all failed Gemini processing gracefully returns only `"Gemini AI processing failed."`.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/src/routes/ai.js`**:
+   - Replaced raw exception message string concatenation with static safe message `"Gemini AI processing failed."` in `POST /api/v1/ai/identify-vehicle`.
+2. **`services/recommendation/src/routes/compare.js`**:
+   - Replaced raw exception message string concatenation with static safe message `"Gemini AI processing failed."` in `POST /api/v1/compare/conclusion`.
+3. **`client/src/pages/AiScannerPage.jsx`**:
+   - Added client-side error sanitization catching any raw JSON, permission denied, or consumer suspension errors and rendering clean user-facing alert: `"Gemini AI processing failed."`.
+4. **`client/src/pages/ComparePage.jsx`**:
+   - Added client-side error sanitization ensuring any upstream error payloads are rendered cleanly as `"Gemini AI processing failed."`.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly with Vite in 1.08s.
+
+## 2026-10-14 — Dedicated Gemini Key & 1.5/2.0 Model Configuration
+
+### Scope and objective
+
+- Configure the updated Gemini API key `[REDACTED_GEMINI_KEY]` in the recommendation service environment.
+- Restrict and target the active models strictly to `gemini-1.5-flash` (default), `gemini-1.5-pro`, and `gemini-2.0-flash`.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/.env` & `.env.example`**:
+   - Updated `GEMINI_API_KEY` to `[REDACTED_GEMINI_KEY]`.
+   - Set `GEMINI_MODEL=gemini-1.5-flash`.
+2. **`services/recommendation/src/routes/ai.js` & `compare.js`**:
+   - Configured `SUPPORTED_MODELS` to allow `gemini-1.5-flash`, `gemini-1.5-pro`, and `gemini-2.0-flash`.
+   - Set `DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash"`.
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly with Vite in 3.39s.
+
+## 2026-10-14 — Resilient Gemini Model Fallback to Resolve 502 Bad Gateway
+
+### Scope and objective
+
+- Diagnose and resolve `502 Bad Gateway` on `POST /api/v1/compare/conclusion` and `POST /api/v1/ai/identify-vehicle`.
+- Root cause: Google Generative Language API v1beta endpoints have deprecated and retired `gemini-1.5-flash` (`404 not found for API version v1beta`) and `gemini-2.0-flash` (`404 no longer available`).
+- Solution: Implement a resilient `generateContentWithFallback` mechanism that attempts the user-specified/preferred model (`gemini-1.5-flash`, `gemini-2.0-flash`, etc.) and automatically falls back to verified active generation models (`gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3-flash-preview`) if Google rejects the legacy identifier.
+- Configure primary default to verified active `gemini-3.5-flash` in `services/recommendation/.env`.
+
+### Implemented behavior and files changed
+
+1. **`services/recommendation/src/routes/ai.js` & `compare.js`**:
+   - Added `generateContentWithFallback(ai, requestedModel, contents)` which tests candidate models sequentially if an upstream retirement/404 is encountered.
+   - Fixed variable scope for `modelUsed` to prevent internal reference errors in test environments.
+2. **`services/recommendation/.env`**:
+   - Set active primary `GEMINI_MODEL=gemini-3.5-flash` while maintaining fallback compatibility for legacy requested models.
+
+### Validation
+
+- Upstream verified: Live prompt execution against Google GenAI endpoint succeeded and generated structured JSON comparative verdicts in real time.
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `npm test`: All 125 tests passed across all 4 workspaces (`client`: 15, `identity-user`: 28, `vehicle-catalog`: 34, `recommendation`: 48).
+- `npm run build`: Production bundle built cleanly with Vite in 1.10s.

@@ -187,7 +187,12 @@ async function run() {
       model: item.model,
       variant: item.variant,
     };
-    const update = { $set: { imageUrl: item.imageUrl } };
+    const update = {
+      $set: {
+        imageUrl: item.imageUrl,
+        images: [item.imageUrl],
+      },
+    };
     const res = await Vehicle.updateMany(filter, update);
 
     if (res.matchedCount > 0) {

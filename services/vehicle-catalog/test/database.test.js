@@ -131,6 +131,8 @@ test("vehicle model enforces schema validation rules", async () => {
     fuelType: "petrol",
     transmission: "manual",
     seatingCapacity: 5,
+    imageUrl: "https://example.com/nexon.jpg",
+    images: ["https://example.com/nexon-front.jpg", "https://example.com/nexon-rear.jpg"],
     status: "draft",
     prices: [
       {
@@ -144,4 +146,7 @@ test("vehicle model enforces schema validation rules", async () => {
   const saved = await validVehicle.save();
   assert.ok(saved._id);
   assert.equal(saved.status, "draft");
+  assert.equal(saved.imageUrl, "https://example.com/nexon.jpg");
+  assert.equal(saved.images.length, 2);
+  assert.equal(saved.images[0], "https://example.com/nexon-front.jpg");
 });

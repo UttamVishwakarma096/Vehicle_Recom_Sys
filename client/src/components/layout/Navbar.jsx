@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiMenu, FiX, FiLock } from "react-icons/fi";
 import { Link } from "../../router/Router.jsx";
 import { useLocation } from "../../router/hooks.js";
 import { useAuth } from "../../context/useAuth.js";
@@ -23,8 +23,8 @@ export function Navbar() {
 
   const navLinks = [
     { to: "/vehicles", label: "Catalog" },
-    { to: "/recommendations", label: "Recommendations" },
-    { to: "/compare", label: "Compare" },
+    { to: "/recommendations", label: "Recommendations", isProtected: !isAuthenticated },
+    { to: "/compare", label: "Compare", isProtected: !isAuthenticated },
     ...(isAuthenticated ? [{ to: "/favorites", label: "Favorites" }] : []),
     ...(isAdmin ? [{ to: "/admin", label: "Admin" }] : []),
   ];
@@ -61,17 +61,34 @@ export function Navbar() {
           {navLinks.map((link) => {
             const isActive = pathname === link.to;
             return (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
-                  isActive
-                    ? "bg-[#D8FF2A] text-[#0A0A0A] shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2B2B2B]/50"
-                }`}
-              >
-                {link.label}
-              </Link>
+              <div key={link.to} className="relative group inline-flex items-center">
+                <Link
+                  to={link.to}
+                  title={link.isProtected ? "Needs login" : undefined}
+                  aria-label={link.isProtected ? `${link.label} (Needs login)` : link.label}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all inline-flex items-center gap-1.5 ${
+                    isActive
+                      ? "bg-[#D8FF2A] text-[#0A0A0A] shadow-xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2B2B2B]/50"
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  {link.isProtected && (
+                    <FiLock className="w-3 h-3 opacity-60" aria-hidden="true" />
+                  )}
+                </Link>
+
+                {link.isProtected && (
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-[#0A0A0A]/95 dark:bg-[#2B2B2B]/95 text-white dark:text-[#F5F5F5] border border-white/10 px-2.5 py-1 text-[11px] font-medium shadow-xl opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-150 backdrop-blur-md"
+                  >
+                    <FiLock className="w-2.5 h-2.5 text-[#D8FF2A]" aria-hidden="true" />
+                    <span>Needs login</span>
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0A0A0A] dark:bg-[#2B2B2B] border-t border-l border-white/10" />
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -140,9 +157,17 @@ export function Navbar() {
               key={link.to}
               to={link.to}
               onClick={() => setMobileMenuOpen(false)}
-              className="p-2.5 text-sm font-semibold rounded-xl text-slate-700 dark:text-slate-200 hover:bg-[#D8FF2A]/10 hover:text-[#1F5A3A] dark:hover:text-[#D8FF2A] transition-colors"
+              title={link.isProtected ? "Needs login" : undefined}
+              aria-label={link.isProtected ? `${link.label} (Needs login)` : link.label}
+              className="p-2.5 text-sm font-semibold rounded-xl text-slate-700 dark:text-slate-200 hover:bg-[#D8FF2A]/10 hover:text-[#1F5A3A] dark:hover:text-[#D8FF2A] transition-colors flex items-center justify-between"
             >
-              {link.label}
+              <span>{link.label}</span>
+              {link.isProtected && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                  <FiLock className="w-3 h-3 text-[#1F5A3A] dark:text-[#D8FF2A]" aria-hidden="true" />
+                  Needs login
+                </span>
+              )}
             </Link>
           ))}
 

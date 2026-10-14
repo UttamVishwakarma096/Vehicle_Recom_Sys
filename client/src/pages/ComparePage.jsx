@@ -136,15 +136,26 @@ export function ComparePage() {
       if (err.status === 429) {
         setConclusionCooldown(15);
         setConclusionError(
-          err.message || "AI comparison rate limit reached. A new token refills every 15 seconds.",
+          err.message || "AI comparison rate limit reached. Please wait a few seconds before trying again.",
         );
         toast.warning(
-          "Rate limit reached. Token refills every 15 seconds. Please wait.",
+          "Rate limit reached. Please wait a few seconds before trying again.",
           "Rate Limit",
         );
       } else {
-        setConclusionError(err.message || "Failed to generate AI comparison conclusion.");
-        toast.error(err.message || "Could not generate conclusion.", "AI Analysis Error");
+        const rawMsg = err.message || "";
+        const isInternalError =
+          rawMsg.startsWith("{") ||
+          rawMsg.includes("Consumer") ||
+          rawMsg.includes("PERMISSION_DENIED") ||
+          rawMsg.includes("api_key") ||
+          rawMsg.includes("Gemini AI processing failed") ||
+          rawMsg.includes("Gemini AI comparison failed");
+        const displayMsg = isInternalError
+          ? "Gemini AI processing failed."
+          : (rawMsg || "Gemini AI processing failed.");
+        setConclusionError(displayMsg);
+        toast.error(displayMsg, "AI Analysis Error");
       }
     } finally {
       setConclusionLoading(false);
@@ -326,18 +337,21 @@ export function ComparePage() {
                       key={v.id}
                       className="p-3.5 sm:p-4 font-bold min-w-[160px] sm:min-w-[200px] border-r border-slate-200/60 dark:border-white/10 last:border-r-0 align-top"
                     >
-                      {v.imageUrl && (
-                        <div className="w-full h-24 mb-2.5 rounded-xl overflow-hidden bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/50 dark:border-white/5">
-                          <img
-                            src={v.imageUrl}
-                            alt={`${v.make} ${v.model}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.parentElement.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      )}
+                      {(() => {
+                        const img = v.imageUrl || (Array.isArray(v.images) && v.images[0]) || null;
+                        return img ? (
+                          <div className="w-full h-24 mb-2.5 rounded-xl overflow-hidden bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/50 dark:border-white/5">
+                            <img
+                              src={img}
+                              alt={`${v.make} ${v.model}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.parentElement.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="text-sm font-bold text-[#0A0A0A] dark:text-[#F5F5F5] font-display">
@@ -410,7 +424,6 @@ export function ComparePage() {
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <Badge variant="lime" size="sm">Gemini AI</Badge>
-                  <Badge variant="forest" size="sm">Token Bucket: 1 Token / 15s</Badge>
                 </div>
                 <h3 className="text-xl font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight flex items-center gap-2">
                   <FaScaleBalanced className="w-5 h-5 text-[#1F5A3A] dark:text-[#D8FF2A]" />
@@ -434,7 +447,7 @@ export function ComparePage() {
                     <span>Analyzing...</span>
                   </>
                 ) : conclusionCooldown > 0 ? (
-                  <span className="font-mono">Refilling ({conclusionCooldown}s)...</span>
+                  <span className="font-mono">Please wait ({conclusionCooldown}s)...</span>
                 ) : conclusionData ? (
                   <>
                     <FiZap className="w-3.5 h-3.5 mr-1.5" />
@@ -471,7 +484,7 @@ export function ComparePage() {
                   onClick={handleGenerateAiConclusion}
                   className="cursor-pointer"
                 >
-                  {conclusionCooldown > 0 ? `Refilling Token (${conclusionCooldown}s)...` : "Analyze with Gemini AI"}
+                  {conclusionCooldown > 0 ? `Please wait (${conclusionCooldown}s)...` : "Analyze with Gemini AI"}
                 </Button>
               </div>
             )}

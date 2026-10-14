@@ -32,6 +32,7 @@ export function AuthPage({ initialMode = "signin" }) {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [loginCooldown, setLoginCooldown] = useState(0);
 
   // Create Account Form State
   const [regName, setRegName] = useState("");
@@ -39,11 +40,34 @@ export function AuthPage({ initialMode = "signin" }) {
   const [regPassword, setRegPassword] = useState("");
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState("");
+  const [registerCooldown, setRegisterCooldown] = useState(0);
+
+  // Rate limiter cooldown countdowns
+  useEffect(() => {
+    if (loginCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setLoginCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [loginCooldown]);
+
+  useEffect(() => {
+    if (registerCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setRegisterCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [registerCooldown]);
 
   // Handle Sign In submission
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError("");
+
+    if (loginCooldown > 0) {
+      setLoginError(`Rate limit in effect. Please wait ${loginCooldown}s before trying again.`);
+      return;
+    }
 
     if (!loginEmail || !loginPassword) {
       setLoginError("Both email and password are required.");
@@ -57,6 +81,10 @@ export function AuthPage({ initialMode = "signin" }) {
       navigate("/");
     } catch (err) {
       setLoginError(err.message || "Invalid credentials.");
+      if (err.status === 429 || err.code === "RATE_LIMIT_EXCEEDED") {
+        const wait = err.retryAfter || 15;
+        setLoginCooldown(wait);
+      }
     } finally {
       setLoginSubmitting(false);
     }
@@ -66,6 +94,11 @@ export function AuthPage({ initialMode = "signin" }) {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setRegError("");
+
+    if (registerCooldown > 0) {
+      setRegError(`Rate limit in effect. Please wait ${registerCooldown}s before trying again.`);
+      return;
+    }
 
     if (!regEmail || !regPassword) {
       setRegError("Email and password are required.");
@@ -91,6 +124,10 @@ export function AuthPage({ initialMode = "signin" }) {
         ? err.fieldErrors.map((f) => f.message).join(" ")
         : err.message || "Registration failed.";
       setRegError(details);
+      if (err.status === 429 || err.code === "RATE_LIMIT_EXCEEDED") {
+        const wait = err.retryAfter || 15;
+        setRegisterCooldown(wait);
+      }
     } finally {
       setRegSubmitting(false);
     }
@@ -114,7 +151,7 @@ export function AuthPage({ initialMode = "signin" }) {
             Authentication Portal
           </Badge>
           <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
-            HttpOnly Session Shield
+            Encrypted & Secure Access
           </span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-display font-extrabold tracking-tight text-[#0A0A0A] dark:text-[#F5F5F5]">
@@ -150,6 +187,16 @@ export function AuthPage({ initialMode = "signin" }) {
                       Sign In
                     </Badge>
                   </div>
+
+                  {loginCooldown > 0 && (
+                    <div
+                      role="alert"
+                      className="mb-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/30 p-3 text-xs font-semibold text-amber-700 dark:text-amber-300 backdrop-blur-sm flex items-center gap-2"
+                    >
+                      <FiShield className="w-4 h-4 text-amber-500 flex-shrink-0 animate-pulse" />
+                      <span>Security cooldown active. Please wait <strong>{loginCooldown}s</strong> before trying again.</span>
+                    </div>
+                  )}
 
                   {loginError && (
                     <div
@@ -189,10 +236,12 @@ export function AuthPage({ initialMode = "signin" }) {
                       type="submit"
                       variant="primary"
                       size="md"
-                      disabled={loginSubmitting}
+                      disabled={loginSubmitting || loginCooldown > 0}
                       className="mt-2 w-full"
                     >
-                      {loginSubmitting ? "Authenticating..." : "Sign In →"}
+                      {loginCooldown > 0
+                        ? `Rate limited (${loginCooldown}s)`
+                        : (loginSubmitting ? "Authenticating..." : "Sign In →")}
                     </Button>
                   </form>
                 </div>
@@ -252,7 +301,7 @@ export function AuthPage({ initialMode = "signin" }) {
                           Deterministic Compatibility Matching
                         </strong>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                          Rule-based backend algorithms score vehicles against your priorities—mileage, power, safety, and maintenance costs—with full transparency.
+                          Intelligent matching algorithms score vehicles against your priorities—mileage, power, safety, and maintenance costs—with full transparency.
                         </p>
                       </div>
                     </div>
@@ -274,7 +323,7 @@ export function AuthPage({ initialMode = "signin" }) {
                 </div>
 
                 <div className="pt-4 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                  <span>3 Microservices Architecture</span>
+                  <span>Verified Automotive Intelligence</span>
                   <span className="text-[#1F5A3A] dark:text-[#D8FF2A] font-semibold">100% Free Access</span>
                 </div>
               </div>
@@ -333,10 +382,10 @@ export function AuthPage({ initialMode = "signin" }) {
                       </div>
                       <div>
                         <strong className="text-xs font-bold text-slate-900 dark:text-[#F5F5F5] block">
-                          Bank-Grade Session Security
+                          Bank-Grade Account Privacy
                         </strong>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                          Passwords hashed with adaptive bcrypt (work factor 12) and sessions protected by strict SameSite HttpOnly cookies. No third-party data tracking.
+                          Your account credentials and activity are safeguarded by modern encryption and strict session security. Zero third-party data tracking.
                         </p>
                       </div>
                     </div>
@@ -365,6 +414,16 @@ export function AuthPage({ initialMode = "signin" }) {
                       Register
                     </Badge>
                   </div>
+
+                  {registerCooldown > 0 && (
+                    <div
+                      role="alert"
+                      className="mb-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/30 p-3 text-xs font-semibold text-amber-700 dark:text-amber-300 backdrop-blur-sm flex items-center gap-2"
+                    >
+                      <FiShield className="w-4 h-4 text-amber-500 flex-shrink-0 animate-pulse" />
+                      <span>Too many registration requests. Please wait <strong>{registerCooldown}s</strong> before trying again.</span>
+                    </div>
+                  )}
 
                   {regError && (
                     <div
@@ -416,10 +475,12 @@ export function AuthPage({ initialMode = "signin" }) {
                       type="submit"
                       variant="primary"
                       size="md"
-                      disabled={regSubmitting}
+                      disabled={regSubmitting || registerCooldown > 0}
                       className="mt-2 w-full"
                     >
-                      {regSubmitting ? "Creating Account..." : "Register Now →"}
+                      {registerCooldown > 0
+                        ? `Rate limited (${registerCooldown}s)`
+                        : (regSubmitting ? "Creating Account..." : "Register Now →")}
                     </Button>
                   </form>
                 </div>

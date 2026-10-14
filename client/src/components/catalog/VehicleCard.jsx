@@ -101,36 +101,41 @@ export function VehicleCard({
         </div>
 
         {/* Vehicle Image Preview */}
-        <Link
-          to={`/vehicles/${vehicle.id}`}
-          className="block relative w-full h-44 mb-3.5 rounded-xl overflow-hidden bg-slate-100/80 dark:bg-[#1E1E1E]/80 border border-slate-200/50 dark:border-white/5 group/img"
-        >
-          {vehicle.imageUrl ? (
-            <img
-              src={vehicle.imageUrl}
-              alt={`${vehicle.make} ${vehicle.model}`}
-              loading="lazy"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.style.display = "none";
-                if (e.currentTarget.nextElementSibling) {
-                  e.currentTarget.nextElementSibling.style.display = "flex";
-                }
-              }}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
-            />
-          ) : null}
-          <div
-            className={`w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#252525] dark:to-[#1a1a1a] ${
-              vehicle.imageUrl ? "hidden" : "flex"
-            }`}
-          >
-            <FaCarSide className="w-9 h-9 mb-1.5 opacity-50" />
-            <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">
-              {vehicle.make} {vehicle.model}
-            </span>
-          </div>
-        </Link>
+        {(() => {
+          const cardImage = vehicle.imageUrl || (Array.isArray(vehicle.images) && vehicle.images[0]) || null;
+          return (
+            <Link
+              to={`/vehicles/${vehicle.id}`}
+              className="block relative w-full h-44 mb-3.5 rounded-xl overflow-hidden bg-slate-100/80 dark:bg-[#1E1E1E]/80 border border-slate-200/50 dark:border-white/5 group/img"
+            >
+              {cardImage ? (
+                <img
+                  src={cardImage}
+                  alt={`${vehicle.make} ${vehicle.model}`}
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.style.display = "none";
+                    if (e.currentTarget.nextElementSibling) {
+                      e.currentTarget.nextElementSibling.style.display = "flex";
+                    }
+                  }}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                />
+              ) : null}
+              <div
+                className={`w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#252525] dark:to-[#1a1a1a] ${
+                  cardImage ? "hidden" : "flex"
+                }`}
+              >
+                <FaCarSide className="w-9 h-9 mb-1.5 opacity-50" />
+                <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">
+                  {vehicle.make} {vehicle.model}
+                </span>
+              </div>
+            </Link>
+          );
+        })()}
 
         {/* Title */}
         <h3 className="text-lg font-bold font-display text-[#0A0A0A] dark:text-[#F5F5F5] tracking-tight">

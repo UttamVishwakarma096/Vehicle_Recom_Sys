@@ -13,6 +13,7 @@ let tokenService;
 let sessionService;
 let server;
 let baseUrl;
+let app;
 
 function extractCookies(response) {
   const list = response.headers.getSetCookie ? response.headers.getSetCookie() : [];
@@ -37,7 +38,7 @@ before(async () => {
     getSessionModel: () => database.models.Session,
   });
 
-  const app = createApp({
+  app = createApp({
     logger,
     isReady: database.isReady,
     models: database.models,
@@ -64,6 +65,8 @@ after(async () => {
 });
 
 beforeEach(async () => {
+  app?.loginLimiter?.reset();
+  app?.registerLimiter?.reset();
   if (database?.connection?.readyState === 1) {
     const collections = database.connection.collections;
     for (const key of Object.keys(collections)) {

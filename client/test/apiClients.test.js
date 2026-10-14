@@ -76,6 +76,44 @@ test("apiClient normalizes HTTP errors into ApiError instances", async () => {
   }
 });
 
+test("apiClient parses Retry-After header on 429 rate limit errors", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Too many login attempts. Please wait 15s before trying again.",
+        },
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": "15",
+        },
+      },
+    );
+  };
+
+  try {
+    await assert.rejects(
+      async () => {
+        await apiClient.post("/api/v1/auth/login", { email: "test@example.com", password: "pwd" });
+      },
+      (err) => {
+        assert.ok(err instanceof ApiError);
+        assert.equal(err.status, 429);
+        assert.equal(err.code, "RATE_LIMIT_EXCEEDED");
+        assert.equal(err.retryAfter, 15);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("catalogClient.listVehicles serializes query parameters accurately", async () => {
   let interceptedUrl;
   const originalFetch = globalThis.fetch;

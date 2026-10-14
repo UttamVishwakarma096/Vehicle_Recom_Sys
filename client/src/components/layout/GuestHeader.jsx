@@ -39,20 +39,34 @@ export function GuestHeader() {
           {navLinks.map((link) => {
             const isActive = pathname === link.to;
             return (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all inline-flex items-center gap-1.5 ${
-                  isActive
-                    ? "bg-[#D8FF2A] text-[#0A0A0A] shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-[#2B2B2B]/70"
-                }`}
-              >
-                <span>{link.label}</span>
+              <div key={link.to} className="relative group inline-flex items-center">
+                <Link
+                  to={link.to}
+                  title={link.isProtected ? "Needs login" : undefined}
+                  aria-label={link.isProtected ? `${link.label} (Needs login)` : link.label}
+                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all inline-flex items-center gap-1.5 ${
+                    isActive
+                      ? "bg-[#D8FF2A] text-[#0A0A0A] shadow-xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-[#2B2B2B]/70"
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  {link.isProtected && (
+                    <FiLock className="w-3 h-3 opacity-60" aria-hidden="true" />
+                  )}
+                </Link>
+
                 {link.isProtected && (
-                  <FiLock className="w-3 h-3 opacity-60" aria-label="Sign in required" />
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-[#0A0A0A]/95 dark:bg-[#2B2B2B]/95 text-white dark:text-[#F5F5F5] border border-white/10 px-2.5 py-1 text-[11px] font-medium shadow-xl opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-150 backdrop-blur-md"
+                  >
+                    <FiLock className="w-2.5 h-2.5 text-[#D8FF2A]" aria-hidden="true" />
+                    <span>Needs login</span>
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0A0A0A] dark:bg-[#2B2B2B] border-t border-l border-white/10" />
+                  </div>
                 )}
-              </Link>
+              </div>
             );
           })}
         </nav>
@@ -103,6 +117,8 @@ export function GuestHeader() {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMobileMenuOpen(false)}
+                  title={link.isProtected ? "Needs login" : undefined}
+                  aria-label={link.isProtected ? `${link.label} (Needs login)` : link.label}
                   className={`p-2.5 text-sm font-semibold rounded-xl transition-colors flex items-center justify-between ${
                     isActive
                       ? "bg-[#D8FF2A] text-[#0A0A0A] font-bold"
@@ -111,7 +127,10 @@ export function GuestHeader() {
                 >
                   <span>{link.label}</span>
                   {link.isProtected && (
-                    <FiLock className="w-3.5 h-3.5 opacity-60" aria-label="Sign in required" />
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                      <FiLock className="w-3 h-3 text-[#1F5A3A] dark:text-[#D8FF2A]" aria-hidden="true" />
+                      Needs login
+                    </span>
                   )}
                 </Link>
               );

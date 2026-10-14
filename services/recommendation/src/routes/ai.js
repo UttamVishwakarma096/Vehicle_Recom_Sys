@@ -3,7 +3,47 @@ import { GoogleGenAI } from "@google/genai";
 import { HttpError } from "../foundation.js";
 import { TokenBucketRateLimiter, createRateLimiterMiddleware } from "../rateLimit.js";
 
-const DEFAULT_MODEL = "gemini-3.8-flash";
+const SUPPORTED_MODELS = new Set([
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-2.0-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-3.8-flash",
+]);
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+
+async function generateContentWithFallback(ai, requestedModel, contents) {
+  const modelsToTry = [
+    requestedModel,
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3-flash-preview",
+  ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
+  let lastErr;
+  for (const model of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+      });
+      return { response, modelUsed: model };
+    } catch (err) {
+      lastErr = err;
+      const isRetirementOrNotFound =
+        err.message?.includes("not found") ||
+        err.message?.includes("no longer available") ||
+        err.message?.includes("NOT_FOUND") ||
+        err.message?.includes("404");
+      if (!isRetirementOrNotFound) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
 
 export function createAiRoutes({
   catalogClient,
@@ -22,7 +62,8 @@ export function createAiRoutes({
   // Both authenticated and guest users can identify vehicles without 15-min token refresh barriers.
   router.post("/identify-vehicle", authMiddleware, rateLimitMiddleware, async (request, response, next) => {
     try {
-      const { image, mimeType = "image/jpeg", apiKey } = request.body || {};
+      const { image, mimeType = "image/jpeg", apiKey, model } = request.body || {};
+      const activeModel = model && SUPPORTED_MODELS.has(model) ? model : DEFAULT_MODEL;
 
       if (!image || typeof image !== "string") {
         throw new HttpError(400, "INVALID_INPUT", "A base64-encoded vehicle image is required.");
@@ -47,6 +88,7 @@ export function createAiRoutes({
       }
 
       let identification;
+      let modelUsed = activeModel;
 
       const isTestEnv =
         process.env.NODE_ENV === "test" ||
@@ -58,7 +100,7 @@ export function createAiRoutes({
         throw new HttpError(
           503,
           "AI_SERVICE_UNAVAILABLE",
-          "Gemini AI vehicle identification is currently unavailable. Please ensure GEMINI_API_KEY is configured in the recommendation service environment.",
+          "Gemini AI vehicle identification is currently unavailable.",
         );
       }
 
@@ -107,9 +149,10 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
 }`;
 
         try {
-          const aiResponse = await ai.models.generateContent({
-            model: DEFAULT_MODEL,
-            contents: [
+          const result = await generateContentWithFallback(
+            ai,
+            activeModel,
+            [
               {
                 inlineData: {
                   data: base64Data,
@@ -118,9 +161,10 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
               },
               prompt,
             ],
-          });
+          );
 
-          const rawText = aiResponse.text?.trim() || "";
+          modelUsed = result.modelUsed;
+          const rawText = result.response.text?.trim() || "";
           const cleanedText = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
           identification = JSON.parse(cleanedText);
         } catch (genErr) {
@@ -130,7 +174,7 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
           throw new HttpError(
             502,
             "GEMINI_API_ERROR",
-            `Gemini AI processing failed: ${genErr.message || "Unknown error"}`,
+            "Gemini AI processing failed.",
           );
         }
       }
@@ -153,7 +197,7 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
 
       return response.status(200).json({
         success: true,
-        model: DEFAULT_MODEL,
+        model: modelUsed || activeModel,
         identification,
         catalogMatches,
       });

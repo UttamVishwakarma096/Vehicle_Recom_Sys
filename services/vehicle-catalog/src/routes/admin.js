@@ -269,6 +269,7 @@ export function createAdminRoutes({ models, authenticate }) {
         "transmission",
         "seatingCapacity",
         "imageUrl",
+        "images",
         "specifications",
         "prices",
         "dataSources",

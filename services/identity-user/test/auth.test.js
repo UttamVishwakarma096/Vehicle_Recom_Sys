@@ -13,6 +13,7 @@ let tokenService;
 let sessionService;
 let server;
 let baseUrl;
+let app;
 
 function extractCookies(response) {
   const list = response.headers.getSetCookie ? response.headers.getSetCookie() : [];
@@ -37,7 +38,7 @@ before(async () => {
     getSessionModel: () => database.models.Session,
   });
 
-  const app = createApp({
+  app = createApp({
     logger,
     isReady: database.isReady,
     models: database.models,
@@ -64,6 +65,8 @@ after(async () => {
 });
 
 beforeEach(async () => {
+  app?.loginLimiter?.reset();
+  app?.registerLimiter?.reset();
   if (database?.connection?.readyState === 1) {
     const collections = database.connection.collections;
     for (const key of Object.keys(collections)) {
@@ -277,3 +280,82 @@ test("AUTH-05: JWKS discovery endpoint exposes valid public keys", async () => {
     assert.ok(jwks.keys[0].e);
   }
 });
+
+test("AUTH-06: login rate limiter rejects excessive attempts with 429 and rate limit headers", async () => {
+  const email = "ratelimit.login@example.test";
+  const ip = "198.51.100.42";
+  const headers = {
+    "Content-Type": "application/json",
+    "x-forwarded-for": ip,
+  };
+  const body = JSON.stringify({ email, password: "wrong-password-attempt" });
+
+  // 5 attempts consume the bucket
+  for (let i = 0; i < 5; i++) {
+    const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers,
+      body,
+    });
+    // Expected 401 because credentials are wrong, but NOT rate limited yet
+    assert.equal(res.status, 401);
+    assert.equal(res.headers.get("x-ratelimit-limit"), "5");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), String(4 - i));
+    assert.ok(res.headers.get("x-ratelimit-reset"));
+  }
+
+  // 6th attempt must be rejected with 429
+  const limitedRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: "POST",
+    headers,
+    body,
+  });
+  assert.equal(limitedRes.status, 429);
+  assert.equal(limitedRes.headers.get("x-ratelimit-remaining"), "0");
+  const retryAfter = limitedRes.headers.get("retry-after");
+  assert.ok(retryAfter && Number(retryAfter) > 0);
+  const data = await limitedRes.json();
+  assert.equal(data.error.code, "RATE_LIMIT_EXCEEDED");
+  assert.match(data.error.message, /Too many login attempts/);
+});
+
+test("AUTH-07: register rate limiter rejects excessive attempts with 429 and rate limit headers", async () => {
+  const ip = "198.51.100.43";
+  const headers = {
+    "Content-Type": "application/json",
+    "x-forwarded-for": ip,
+  };
+
+  // 5 registrations consume bucket
+  for (let i = 0; i < 5; i++) {
+    const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email: `driver_${i}@example.test`,
+        password: "ValidPassword123!",
+      }),
+    });
+    assert.equal(res.status, 201);
+    assert.equal(res.headers.get("x-ratelimit-limit"), "5");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), String(4 - i));
+  }
+
+  // 6th attempt must be rejected with 429
+  const limitedRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      email: "driver_overflow@example.test",
+      password: "ValidPassword123!",
+    }),
+  });
+  assert.equal(limitedRes.status, 429);
+  assert.equal(limitedRes.headers.get("x-ratelimit-remaining"), "0");
+  const retryAfter = limitedRes.headers.get("retry-after");
+  assert.ok(retryAfter && Number(retryAfter) > 0);
+  const data = await limitedRes.json();
+  assert.equal(data.error.code, "RATE_LIMIT_EXCEEDED");
+  assert.match(data.error.message, /Too many registration attempts/);
+});
+

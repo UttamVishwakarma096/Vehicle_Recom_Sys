@@ -1150,6 +1150,8 @@ export async function seedCatalog({ uri = MONGODB_URI } = {}) {
     const existing = await Vehicle.findOne(query);
 
     if (existing) {
+      existing.imageUrl = item.imageUrl;
+      existing.images = item.images || (item.imageUrl ? [item.imageUrl] : []);
       existing.bodyType = item.bodyType;
       existing.fuelType = item.fuelType;
       existing.transmission = item.transmission;
@@ -1167,6 +1169,7 @@ export async function seedCatalog({ uri = MONGODB_URI } = {}) {
     } else {
       const doc = new Vehicle({
         ...clientPayload,
+        images: item.images || (item.imageUrl ? [item.imageUrl] : []),
         prices: preparedPrices,
         createdBy: createdBy || "system_seed_admin",
         verifiedBy: verifiedBy || "lead_catalog_auditor",

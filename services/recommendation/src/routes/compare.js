@@ -3,7 +3,47 @@ import { GoogleGenAI } from "@google/genai";
 import { HttpError } from "../foundation.js";
 import { TokenBucketRateLimiter, createRateLimiterMiddleware } from "../rateLimit.js";
 
-const DEFAULT_MODEL = "gemini-3.8-flash";
+const SUPPORTED_MODELS = new Set([
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-2.0-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-3.8-flash",
+]);
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+
+async function generateContentWithFallback(ai, requestedModel, contents) {
+  const modelsToTry = [
+    requestedModel,
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3-flash-preview",
+  ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
+  let lastErr;
+  for (const model of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+      });
+      return { response, modelUsed: model };
+    } catch (err) {
+      lastErr = err;
+      const isRetirementOrNotFound =
+        err.message?.includes("not found") ||
+        err.message?.includes("no longer available") ||
+        err.message?.includes("NOT_FOUND") ||
+        err.message?.includes("404");
+      if (!isRetirementOrNotFound) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
 const OBJECT_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 const MIN_COMPARE_COUNT = 2;
 const MAX_COMPARE_COUNT = 4;
@@ -280,7 +320,8 @@ export function createCompareRoutes({
         request.correlationId,
       );
 
-      const { apiKey } = request.body || {};
+      const { apiKey, model } = request.body || {};
+      const activeModel = model && SUPPORTED_MODELS.has(model) ? model : DEFAULT_MODEL;
       const resolvedApiKey =
         request.headers["x-gemini-api-key"] ||
         apiKey ||
@@ -296,11 +337,12 @@ export function createCompareRoutes({
         throw new HttpError(
           503,
           "AI_SERVICE_UNAVAILABLE",
-          "Gemini AI comparison conclusion is currently unavailable. Please ensure GEMINI_API_KEY is configured in the recommendation service environment.",
+          "Gemini AI comparison conclusion is currently unavailable.",
         );
       }
 
       let conclusion;
+      let modelUsed = activeModel;
       if (isTestEnv && (!resolvedApiKey || resolvedApiKey === "test-key" || resolvedApiKey === "mock-test")) {
         conclusion = generateMockConclusion(orderedVehicles);
       } else {
@@ -351,12 +393,14 @@ Respond ONLY with valid JSON matching this exact structure with no extra text, m
 }`;
 
         try {
-          const aiResponse = await ai.models.generateContent({
-            model: DEFAULT_MODEL,
-            contents: [prompt],
-          });
+          const result = await generateContentWithFallback(
+            ai,
+            activeModel,
+            [prompt],
+          );
 
-          const rawText = aiResponse.text?.trim() || "";
+          modelUsed = result.modelUsed;
+          const rawText = result.response.text?.trim() || "";
           const cleanedText = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
           conclusion = JSON.parse(cleanedText);
         } catch (genErr) {
@@ -366,14 +410,14 @@ Respond ONLY with valid JSON matching this exact structure with no extra text, m
           throw new HttpError(
             502,
             "GEMINI_API_ERROR",
-            `Gemini AI comparison failed: ${genErr.message || "Unknown error"}`,
+            "Gemini AI processing failed.",
           );
         }
       }
 
       return response.status(200).json({
         success: true,
-        model: DEFAULT_MODEL,
+        model: modelUsed || activeModel,
         conclusion,
       });
     } catch (error) {

@@ -1,10 +1,11 @@
 export class ApiError extends Error {
-  constructor(status, code, message, fieldErrors = []) {
+  constructor(status, code, message, fieldErrors = [], retryAfter = null) {
     super(message || "An API error occurred.");
     this.name = "ApiError";
     this.status = status;
     this.code = code || "API_ERROR";
     this.fieldErrors = fieldErrors;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -96,11 +97,14 @@ class ApiClient {
       }
 
       const err = responseData?.error;
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfter = retryAfterHeader ? Number(retryAfterHeader) : null;
       throw new ApiError(
         response.status,
         err?.code || "HTTP_ERROR",
         err?.message || `Request failed with status ${response.status}`,
         err?.fieldErrors || [],
+        retryAfter,
       );
     }
 

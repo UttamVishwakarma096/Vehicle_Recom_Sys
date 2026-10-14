@@ -2,11 +2,25 @@ import { Router } from "express";
 import { HttpError } from "../foundation.js";
 import { hashPassword, verifyPassword, validatePasswordPolicy } from "../auth/passwords.js";
 import { setAuthCookies, clearAuthCookies, parseCookies, getCookieNames } from "../auth/cookies.js";
+import { TokenBucketRateLimiter, createRateLimiterMiddleware } from "../rateLimit.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FORBIDDEN_REGISTER_KEYS = new Set(["role", "_id", "passwordHash"]);
 
-export function createAuthRouter({ models, tokenService, sessionService, authenticate }) {
+export function createAuthRouter({
+  models,
+  tokenService,
+  sessionService,
+  authenticate,
+  loginLimiter = new TokenBucketRateLimiter({
+    capacity: 5,
+    refillIntervalMs: 12_000,
+  }),
+  registerLimiter = new TokenBucketRateLimiter({
+    capacity: 5,
+    refillIntervalMs: 15_000,
+  }),
+}) {
   const router = Router();
   const getUser = () => {
     const model = models.User;
@@ -16,6 +30,35 @@ export function createAuthRouter({ models, tokenService, sessionService, authent
     return model;
   };
 
+  const loginRateLimitMiddleware = createRateLimiterMiddleware({
+    limiter: loginLimiter,
+    keyGenerator: (req) => {
+      const forwarded = req.headers["x-forwarded-for"];
+      const rawIp =
+        (typeof forwarded === "string" && forwarded.split(",")[0].trim()) ||
+        req.ip ||
+        req.socket?.remoteAddress ||
+        "127.0.0.1";
+      const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+      return email ? `login:${rawIp}:${email}` : `login:${rawIp}`;
+    },
+    actionName: "login",
+  });
+
+  const registerRateLimitMiddleware = createRateLimiterMiddleware({
+    limiter: registerLimiter,
+    keyGenerator: (req) => {
+      const forwarded = req.headers["x-forwarded-for"];
+      const rawIp =
+        (typeof forwarded === "string" && forwarded.split(",")[0].trim()) ||
+        req.ip ||
+        req.socket?.remoteAddress ||
+        "127.0.0.1";
+      return `register:${rawIp}`;
+    },
+    actionName: "registration",
+  });
+
   // JWKS discovery endpoints
   const jwksHandler = (_request, response) => {
     response.json(tokenService.getJwks());
@@ -24,7 +67,7 @@ export function createAuthRouter({ models, tokenService, sessionService, authent
   router.get("/api/v1/auth/jwks.json", jwksHandler);
 
   // Register
-  router.post("/api/v1/auth/register", async (request, response, next) => {
+  router.post("/api/v1/auth/register", registerRateLimitMiddleware, async (request, response, next) => {
     const body = request.body;
     if (!body || typeof body !== "object") {
       return next(new HttpError(400, "VALIDATION_ERROR", "Request body is required."));
@@ -135,7 +178,7 @@ export function createAuthRouter({ models, tokenService, sessionService, authent
   });
 
   // Login
-  router.post("/api/v1/auth/login", async (request, response, next) => {
+  router.post("/api/v1/auth/login", loginRateLimitMiddleware, async (request, response, next) => {
     const { email, password, ...extra } = request.body || {};
 
     if (Object.keys(extra).length > 0) {

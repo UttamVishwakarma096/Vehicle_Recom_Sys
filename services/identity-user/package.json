@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "start": "node --env-file-if-exists=.env src/server.js",
-    "build": "node --check src/app.js && node --check src/foundation.js && node --check src/database.js && node --check src/models.js && node --check src/server.js && node --check src/auth/passwords.js && node --check src/auth/jwt.js && node --check src/auth/cookies.js && node --check src/auth/sessions.js && node --check src/auth/middleware.js && node --check src/auth/serviceAuth.js && node --check src/routes/auth.js && node --check src/routes/users.js && node --check src/routes/internal.js",
+    "build": "node --check src/app.js && node --check src/foundation.js && node --check src/database.js && node --check src/models.js && node --check src/server.js && node --check src/rateLimit.js && node --check src/auth/passwords.js && node --check src/auth/jwt.js && node --check src/auth/cookies.js && node --check src/auth/sessions.js && node --check src/auth/middleware.js && node --check src/auth/serviceAuth.js && node --check src/routes/auth.js && node --check src/routes/users.js && node --check src/routes/internal.js",
     "test": "node --test"
   },
   "dependencies": {

@@ -232,14 +232,24 @@ export function AiScannerPage() {
     } catch (err) {
       if (err.status === 429) {
         setCooldown(15);
-        setError(err.message || "AI search rate limit reached. A new token refills every 15 seconds.");
+        setError("AI search rate limit reached. Please wait a moment.");
         toast.warning(
-          "Rate limit reached. 1 token refills every 15 seconds. Please wait a moment.",
+          "Rate limit reached. Please wait a moment.",
           "Rate Limit",
         );
       } else {
-        setError(err.message || "Failed to analyze vehicle image with Gemini AI.");
-        toast.error(err.message || "Identification failed.", "AI Error");
+        const rawMsg = err.message || "";
+        const isInternalError =
+          rawMsg.startsWith("{") ||
+          rawMsg.includes("Consumer") ||
+          rawMsg.includes("PERMISSION_DENIED") ||
+          rawMsg.includes("api_key") ||
+          rawMsg.includes("Gemini AI processing failed");
+        const displayMsg = isInternalError
+          ? "Gemini AI processing failed."
+          : (rawMsg || "Gemini AI processing failed.");
+        setError(displayMsg);
+        toast.error(displayMsg, "AI Error");
       }
     } finally {
       setAnalyzing(false);
@@ -261,8 +271,7 @@ export function AiScannerPage() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <Badge variant="forest" size="sm">Gemini 3.8 Flash</Badge>
-            <Badge variant="lime" size="sm">Token Bucket: 1 Token / 15s</Badge>
+            <Badge variant="forest" size="sm">Gemini Multimodal AI</Badge>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Drag-n-Drop & Clipboard Paste
             </span>
@@ -429,7 +438,7 @@ export function AiScannerPage() {
       {/* Loading Indicator */}
       {analyzing && (
         <div className="my-10">
-          <LoadingSpinner label="Gemini 3.8 Flash is analyzing vehicle cues & matching catalog..." size="lg" />
+          <LoadingSpinner label="Gemini AI is analyzing vehicle cues & matching catalog..." size="lg" />
         </div>
       )}
 

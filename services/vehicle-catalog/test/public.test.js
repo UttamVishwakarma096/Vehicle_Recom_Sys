@@ -208,6 +208,9 @@ test("CAT-02: public vehicle details returns full valid projection with missing 
   assert.equal(data.model, "Nexon");
   assert.equal(data.variant, "Creative Plus");
   assert.equal(data.imageUrl, "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80");
+  assert.deepEqual(data.images, [
+    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+  ]);
   assert.equal(data.status, "published");
 
   // Prices projection

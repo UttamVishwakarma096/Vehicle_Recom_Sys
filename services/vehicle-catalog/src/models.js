@@ -86,6 +86,7 @@ export function registerModels(connection) {
         },
       },
       imageUrl: { type: String, trim: true },
+      images: { type: [String], default: undefined },
       specifications: { type: Schema.Types.Mixed, default: undefined },
       prices: { type: [priceSchema], default: undefined },
       status: {
