@@ -16,6 +16,10 @@ export function Footer() {
               Transparent, explainable vehicle recommendations based strictly on verified
               catalog evidence. No fabricated specs, no black-box estimates.
             </p>
+            <div className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-[#2B2B2B]/60 px-3 py-1.5 border border-slate-200/60 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-[#1F5A3A] dark:bg-[#D8FF2A] ring-2 ring-[#1F5A3A]/20 dark:ring-[#D8FF2A]/20" />
+              <span>Created & Owned by <strong className="font-semibold text-[#0A0A0A] dark:text-[#F5F5F5]">Uttam Vishwakarma</strong></span>
+            </div>
           </div>
 
           <div>
@@ -63,7 +67,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 sm:mt-12 pt-6 border-t border-[#2B2B2B]/10 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
-          <span>VehicleWise • Automotive Intelligence Platform</span>
+          <span>VehicleWise • Developed & Maintained by <strong className="font-semibold text-[#0A0A0A] dark:text-[#F5F5F5]">Uttam Vishwakarma</strong></span>
           <span className="text-[11px] font-mono bg-slate-100/80 dark:bg-[#2B2B2B]/80 px-2.5 py-1 rounded-full border border-slate-200/60 dark:border-white/10 text-slate-600 dark:text-[#F5F5F5]">
             Verified Data Guarantee
           </span>

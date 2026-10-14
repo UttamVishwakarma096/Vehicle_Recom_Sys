@@ -2350,4 +2350,24 @@ product features and database integration not started
 - `recommendation` tests (`node --test`): All 49 tests passed.
 - `npm run build`: Production bundle built cleanly with Vite in 1.28s.
 
+## 2026-10-14 — Owner and Developer Attribution in Footer
+
+### Scope and objective
+
+- In application footer, add "Uttam Vishwakarma" as the owner and developer.
+- Maintain responsive, accessible design across light and dark themes.
+
+### Implemented behavior and files changed
+
+1. **`client/src/components/layout/Footer.jsx`**:
+   - Added "Created & Owned by Uttam Vishwakarma" badge pill with indicator in the brand summary column.
+   - Updated the footer bottom bar attribution to: "VehicleWise • Developed & Maintained by Uttam Vishwakarma".
+
+### Validation
+
+- `npm run lint`: Passed with 0 errors and 0 warnings.
+- `client` tests (`node --test`): All 27 tests passed.
+- `npm run build`: Production bundle built cleanly with Vite in 2.48s.
+
+
 
