@@ -9,20 +9,39 @@ export class ApiError extends Error {
   }
 }
 
-function getBaseUrl(envKey) {
-  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[envKey]) {
-    return import.meta.env[envKey];
+function getBaseUrl(envKey, fallbackUrl = "") {
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    if (import.meta.env[envKey]) {
+      return String(import.meta.env[envKey]).replace(/\/+$/, "");
+    }
+    if (import.meta.env.PROD && fallbackUrl) {
+      return fallbackUrl.replace(/\/+$/, "");
+    }
   }
-  if (typeof process !== "undefined" && process.env && process.env[envKey]) {
-    return process.env[envKey];
+  if (typeof process !== "undefined" && process.env) {
+    if (process.env[envKey]) {
+      return String(process.env[envKey]).replace(/\/+$/, "");
+    }
+    if (process.env.NODE_ENV === "production" && fallbackUrl) {
+      return fallbackUrl.replace(/\/+$/, "");
+    }
   }
   return "";
 }
 
 export function resolveServiceUrl(path) {
-  const identityBase = getBaseUrl("https://vehicle-recom-sys-identity-user.onrender.com");
-  const catalogBase = getBaseUrl("https://vehicle-recom-sys-vehicle-catelog.onrender.com");
-  const recommendationBase = getBaseUrl("https://vehicle-recom-sys-recommendation.onrender.com");
+  const identityBase = getBaseUrl(
+    "VITE_IDENTITY_URL",
+    "https://vehicle-recom-sys-identity-user.onrender.com"
+  );
+  const catalogBase = getBaseUrl(
+    "VITE_CATALOG_URL",
+    "https://vehicle-recom-sys-vehicle-catelog.onrender.com"
+  );
+  const recommendationBase = getBaseUrl(
+    "VITE_RECOMMENDATION_URL",
+    "https://vehicle-recom-sys-recommendation.onrender.com"
+  );
 
   if (
     path.startsWith("/api/v1/auth") ||
@@ -49,6 +68,7 @@ export function resolveServiceUrl(path) {
 class ApiClient {
   constructor() {
     this.csrfToken = null;
+    this.token = null;
   }
 
   setCsrfToken(token) {
@@ -57,6 +77,25 @@ class ApiClient {
 
   getCsrfToken() {
     return this.csrfToken;
+  }
+
+  setToken(token) {
+    this.token = token;
+    if (typeof localStorage !== "undefined") {
+      if (token) {
+        localStorage.setItem("vehicle_auth_token", token);
+      } else {
+        localStorage.removeItem("vehicle_auth_token");
+      }
+    }
+  }
+
+  getToken() {
+    if (this.token) return this.token;
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem("vehicle_auth_token");
+    }
+    return null;
   }
 
   async request(path, options = {}) {
@@ -71,6 +110,11 @@ class ApiClient {
       Accept: "application/json",
       ...headers,
     };
+
+    const authToken = this.getToken();
+    if (authToken && !requestHeaders["Authorization"]) {
+      requestHeaders["Authorization"] = `Bearer ${authToken}`;
+    }
 
     if (body !== undefined && !(body instanceof FormData)) {
       requestHeaders["Content-Type"] = "application/json";

@@ -239,6 +239,45 @@ export function createErrorHandler() {
   };
 }
 
+export function createCorsMiddleware({ allowedOrigins = [] } = {}) {
+  return (request, response, next) => {
+    const origin = request.headers.origin;
+    if (origin) {
+      const envOrigins = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const origins = [...allowedOrigins, ...envOrigins];
+
+      const isAllowed =
+        origins.length === 0 ||
+        origins.includes("*") ||
+        origins.includes(origin);
+
+      if (isAllowed) {
+        response.setHeader("Access-Control-Allow-Origin", origin);
+        response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
+        );
+        response.setHeader(
+          "Access-Control-Allow-Headers",
+          "Content-Type, Authorization, X-CSRF-Token, X-Correlation-ID, Accept",
+        );
+        response.setHeader(
+          "Access-Control-Expose-Headers",
+          "X-CSRF-Token, X-Correlation-ID, Retry-After",
+        );
+      }
+    }
+
+    if (request.method === "OPTIONS") {
+      return response.status(204).end();
+    }
+    return next();
+  };
+}
+
 export function createFoundationApp(
   service,
   logger,
@@ -247,6 +286,7 @@ export function createFoundationApp(
 ) {
   const app = express();
   app.disable("x-powered-by");
+  app.use(createCorsMiddleware());
   app.use(createRequestContextMiddleware(logger));
   app.use(express.raw({ type: () => true, limit: BODY_LIMIT_BYTES }));
   app.use(parseJsonBody);

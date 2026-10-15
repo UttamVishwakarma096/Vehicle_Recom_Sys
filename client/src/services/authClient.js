@@ -6,6 +6,9 @@ export const authClient = {
     if (data?.csrfToken) {
       apiClient.setCsrfToken(data.csrfToken);
     }
+    if (data?.accessToken) {
+      apiClient.setToken(data.accessToken);
+    }
     return data;
   },
 
@@ -21,6 +24,9 @@ export const authClient = {
     const data = await apiClient.post("/api/v1/auth/register", payload);
     if (data?.csrfToken) {
       apiClient.setCsrfToken(data.csrfToken);
+    }
+    if (data?.accessToken) {
+      apiClient.setToken(data.accessToken);
     }
     return data;
   },
@@ -38,6 +44,9 @@ export const authClient = {
     if (data?.csrfToken) {
       apiClient.setCsrfToken(data.csrfToken);
     }
+    if (data?.accessToken) {
+      apiClient.setToken(data.accessToken);
+    }
     return data;
   },
 
@@ -46,6 +55,7 @@ export const authClient = {
       await apiClient.post("/api/v1/auth/logout");
     } finally {
       apiClient.setCsrfToken(null);
+      apiClient.setToken(null);
     }
   },
 

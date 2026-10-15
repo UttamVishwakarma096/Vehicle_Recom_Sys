@@ -2662,6 +2662,55 @@ product features and database integration not started
 - `node --check server.js`: passed with 0 errors.
 - Synchronized with `origin/main` (including DNS fallback configuration and start script updates) and pushed commit `dbba227` cleanly to GitHub remote.
 
+## 2026-10-15 — Fix: Multi-Service Render Cross-Origin Connection and Authentication
+
+### Scope and objective
+
+- Investigate and resolve connection failures between client and deployed Render microservices following remote commit `43bc8eb`.
+- Identify root causes preventing client communication with `https://vehicle-recom-sys-*.onrender.com`.
+- Implement robust Cross-Origin Resource Sharing (CORS), cross-origin token fallback, SameSite cookie configuration, and service URL resolution.
+
+### Root Cause Analysis
+
+1. **`getBaseUrl` Parameter Inversion in `client/src/services/apiClient.js`**:
+   - `resolveServiceUrl` called `getBaseUrl("https://vehicle-recom-sys-identity-user.onrender.com")` passing the URL as `envKey`. Because `import.meta.env["https://..."]` is `undefined`, the function returned `""`, forcing all client API requests to relative URLs (`"" + "/api/v1/..."`) hitting the frontend host rather than the backend microservices.
+2. **Missing CORS Headers on Deployed Microservices**:
+   - Microservices on Render (`vehicle-catalog`, `identity-user`, `recommendation`) lacked CORS middleware for browser preflight `OPTIONS` requests and cross-origin responses (`Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials`). Browsers blocked all requests under standard CORS policy.
+3. **Cross-Origin Cookie SameSite Restrictions**:
+   - Authentication cookies were configured with `SameSite=Lax`. When the client (e.g. hosted on Vercel, Netlify, or localhost) makes cross-origin `fetch` calls with credentials to Render services (`*.onrender.com`), browsers block `SameSite=Lax` cookies, causing 401 Unauthorized errors on protected endpoints.
+4. **Inter-Service URLs on Render**:
+   - In `recommendation` and `vehicle-catalog`, inter-service communication (`CATALOG_SERVICE_URL`, `IDENTITY_SERVICE_URL`, `IDENTITY_JWKS_URL`) fell back to `127.0.0.1` when run as separate Render web services, failing internal lookups when environment variables were not explicitly provided.
+
+### Implemented behavior and files changed
+
+1. **`client/src/services/apiClient.js`**:
+   - Refactored `getBaseUrl(envKey, fallbackUrl = "")` to properly accept an environment variable name and an optional fallback. In production (`import.meta.env.PROD` or `process.env.NODE_ENV === "production"`), it falls back to the production Render service endpoints.
+   - Added client-side token storage (`setToken` / `getToken` / `localStorage`) and automated `Authorization: Bearer <token>` header injection on all requests.
+2. **`client/src/services/authClient.js`**:
+   - Updated `login`, `register`, and `refresh` to store the returned `accessToken` in `apiClient`, and `logout` to clear it.
+3. **`services/identity-user/src/routes/auth.js`**:
+   - Included `accessToken` in the JSON response of `/api/v1/auth/login` and `/api/v1/auth/refresh` so cross-origin frontends receive valid JWT credentials even if cross-site cookies are blocked.
+4. **`services/identity-user/src/auth/cookies.js`**:
+   - Configured `SameSite=None; Secure` for production environments (or when `COOKIE_SAMESITE` is set) so cross-origin authentication cookies are preserved by modern browsers.
+5. **CORS Middleware across all services**:
+   - Added `createCorsMiddleware` to `services/identity-user/src/foundation.js`, `services/vehicle-catalog/src/foundation.js`, and `services/recommendation/src/foundation.js`.
+   - Mounts prior to JSON parsing; handles `OPTIONS` preflight with 204 No Content, sets `Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials: true`, allowed methods, and exposed headers (`X-CSRF-Token`, `X-Correlation-ID`, `Retry-After`).
+6. **Inter-Service Fallback on Render**:
+   - In `services/recommendation/src/app.js` and `services/vehicle-catalog/src/app.js`, configured fallback for `CATALOG_SERVICE_URL`, `IDENTITY_SERVICE_URL`, and `jwksUri` to use the Render service endpoints when `process.env.RENDER` is present.
+
+### Validation
+
+- `client` tests (`node --test client/test/*.test.js`): 29/29 passed.
+- `services/identity-user` tests (`node --test`): 40/40 passed.
+- `services/vehicle-catalog` tests (`node --test`): 35/35 passed.
+- `services/recommendation` tests (`node --test`): 49/49 passed.
+- Production client bundle build (`npm --prefix client run build`): passed in 1.23s.
+- Live Render endpoint verification:
+  - `https://vehicle-recom-sys-identity-user.onrender.com/health/ready` -> HTTP 200 OK.
+  - `https://vehicle-recom-sys-vehicle-catelog.onrender.com/health/ready` -> HTTP 200 OK.
+  - `https://vehicle-recom-sys-recommendation.onrender.com/health/ready` -> HTTP 200 OK.
+
+
 
 
 

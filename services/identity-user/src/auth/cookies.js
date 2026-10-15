@@ -42,17 +42,18 @@ export function setAuthCookies(
   { accessToken, refreshToken, isProduction = process.env.NODE_ENV === "production" },
 ) {
   const names = getCookieNames(isProduction);
-  const secureFlag = isProduction ? "; Secure" : "";
+  const sameSite = process.env.COOKIE_SAMESITE || (isProduction ? "None" : "Lax");
+  const secureFlag = isProduction || sameSite === "None" ? "; Secure" : "";
 
   const cookiesToSet = [];
   if (accessToken) {
     cookiesToSet.push(
-      `${names.access}=${encodeURIComponent(accessToken)}; Path=/; Max-Age=900; HttpOnly; SameSite=Lax${secureFlag}`,
+      `${names.access}=${encodeURIComponent(accessToken)}; Path=/; Max-Age=900; HttpOnly; SameSite=${sameSite}${secureFlag}`,
     );
   }
   if (refreshToken) {
     cookiesToSet.push(
-      `${names.refresh}=${encodeURIComponent(refreshToken)}; Path=/api/v1/auth; Max-Age=604800; HttpOnly; SameSite=Lax${secureFlag}`,
+      `${names.refresh}=${encodeURIComponent(refreshToken)}; Path=/api/v1/auth; Max-Age=604800; HttpOnly; SameSite=${sameSite}${secureFlag}`,
     );
   }
 
@@ -72,11 +73,12 @@ export function clearAuthCookies(
   { isProduction = process.env.NODE_ENV === "production" } = {},
 ) {
   const names = getCookieNames(isProduction);
-  const secureFlag = isProduction ? "; Secure" : "";
+  const sameSite = process.env.COOKIE_SAMESITE || (isProduction ? "None" : "Lax");
+  const secureFlag = isProduction || sameSite === "None" ? "; Secure" : "";
 
   const clearCookies = [
-    `${names.access}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secureFlag}`,
-    `${names.refresh}=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Lax${secureFlag}`,
+    `${names.access}=; Path=/; Max-Age=0; HttpOnly; SameSite=${sameSite}${secureFlag}`,
+    `${names.refresh}=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=${sameSite}${secureFlag}`,
   ];
 
   const existing = response.getHeader("Set-Cookie");

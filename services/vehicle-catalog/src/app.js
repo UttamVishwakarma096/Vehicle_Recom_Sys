@@ -20,7 +20,9 @@ export function createApp({
     process.env.IDENTITY_JWKS_URL ||
     (process.env.IDENTITY_SERVICE_URL
       ? `${process.env.IDENTITY_SERVICE_URL}/.well-known/jwks.json`
-      : "http://127.0.0.1:4001/.well-known/jwks.json");
+      : process.env.RENDER
+        ? "https://vehicle-recom-sys-identity-user.onrender.com/.well-known/jwks.json"
+        : "http://127.0.0.1:4001/.well-known/jwks.json");
 
   const verifier =
     tokenVerifier ??

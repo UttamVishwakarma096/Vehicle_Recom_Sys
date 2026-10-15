@@ -250,6 +250,7 @@ export function createAuthRouter({
         role: user.role,
         profile: user.profile || {},
       },
+      accessToken,
       csrfToken: session.csrfToken,
     });
   });
@@ -295,6 +296,7 @@ export function createAuthRouter({
     });
 
     return response.json({
+      accessToken,
       csrfToken: newSession.csrfToken,
     });
   });
