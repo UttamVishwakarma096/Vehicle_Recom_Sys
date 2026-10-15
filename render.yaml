@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: vehicle-recommendation-system
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.14.0"
+      - key: MONGODB_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: INTERNAL_SERVICE_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true

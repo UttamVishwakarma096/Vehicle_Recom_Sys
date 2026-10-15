@@ -2619,6 +2619,49 @@ product features and database integration not started
 - `npm --prefix client run build`: Vite production bundle built cleanly in 1.36s with 0 errors.
 - Verification for `window.confirm` / `alert` calls: 0 occurrences remaining in frontend source.
 
+## 2026-10-15 — Deployment: Render Platform Hosting Compatibility & Unified Ingress
+
+### Scope and objective
+
+- Resolve deployment blockers preventing services and client from hosting successfully on Render (https://render.com).
+- Fix key hosting failure points:
+  1. **Host Binding Failure**: Services defaulted to `127.0.0.1`, which prevented Render's ingress proxy and container health checks from reaching the processes on container network interfaces. Updated `loadServiceConfig` across all 3 services to bind to `0.0.0.0` when running on Render or in production.
+  2. **Unsupported Engine Range / Startup Crash**: Replaced strict `"node": ">=24 <25"` with `"node": ">=20 <25"` to match Render's default Node runtime. Removed `--env-file-if-exists` flags from `start` scripts in `vehicle-catalog` and `recommendation` which fail on standard cloud container runtimes.
+  3. **Missing Root Start Script**: Added root `"start": "node server.js"` script to `package.json` so Render's default launch command executes seamlessly.
+  4. **Unified Production Ingress (`server.js`)**: Created a single-instance production ingress server that hosts the compiled React SPA (`client/dist`), mounts the 3 microservice Express applications on their documented API routes (`/api/v1/auth`, `/api/v1/vehicles`, `/api/v1/recommendations`, etc.), and connects each service to its database while preserving service boundaries.
+  5. **API Client URL Resolution**: Updated `client/src/services/apiClient.js` to route `/api/v1/admin/users` to the identity base URL.
+  6. **Render Blueprint (`render.yaml`)**: Added Infrastructure-as-Code blueprint with health check paths and environment configurations for zero-config one-click deployments.
+
+### Implemented behavior and files changed
+
+1. **`server.js`**:
+   - Implemented unified edge ingress server conforming to `docs/03_SYSTEM_ARCHITECTURE.md`.
+   - Mounts Express apps per service boundary: Identity (`/api/v1/auth`, `/api/v1/users`, `/api/v1/admin/users`), Catalog (`/api/v1/vehicles`, `/api/v1/admin/vehicles`), Recommendation (`/api/v1/recommendations`, `/api/v1/compare`, `/api/v1/favorites`, `/api/v1/ai`).
+   - Serves static assets from `client/dist` with SPA HTML5 fallback (`index.html`).
+   - Resolves isolated service database URIs (`vehicle_identity`, `vehicle_catalog`, `vehicle_recommendations`).
+2. **`render.yaml`**:
+   - Created Render Blueprint configuration with automated secret generation (`INTERNAL_SERVICE_SECRET`, `JWT_SECRET`), healthcheck probe (`/health`), and Node 22 runtime declaration.
+3. **`services/identity-user/src/foundation.js`**, **`services/vehicle-catalog/src/foundation.js`**, **`services/recommendation/src/foundation.js`**:
+   - Updated `loadServiceConfig` to automatically default `HOST` to `0.0.0.0` when `env.RENDER` is present or `env.NODE_ENV === "production"`.
+4. **`package.json` across all workspaces**:
+   - Updated `engines` to `"node": ">=20 <25"`.
+   - Added `"start": "node server.js"` to root `package.json`.
+   - Updated `start` scripts in `services/vehicle-catalog` and `services/recommendation` to `node src/server.js`.
+5. **`client/src/services/apiClient.js`**:
+   - Added `/api/v1/admin/users` to `resolveServiceUrl` identity route matcher.
+6. **`services/recommendation/src/app.js`**:
+   - Added safe fallback URLs for `CatalogClient` (`http://127.0.0.1:4002`) and `IdentityClient` (`http://127.0.0.1:4001`) when environment variables are omitted.
+
+### Validation
+
+- `client` tests (`node --test client/test/*.test.js`): 29/29 passed.
+- `services/identity-user` tests (`node --test`): 40/40 passed.
+- `services/vehicle-catalog` tests (`node --test`): 35/35 passed.
+- `services/recommendation` tests (`node --test`): 49/49 passed.
+- Full workspace build (`npm run build`): passed with 0 errors in 1.34s.
+- `node --check server.js`: passed with 0 errors.
+
+
 
 
 

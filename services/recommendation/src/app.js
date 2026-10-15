@@ -36,15 +36,15 @@ export function createApp({
 
   const resolvedCatalogClient =
     catalogClient ??
-    (process.env.CATALOG_SERVICE_URL
-      ? new CatalogClient({ baseUrl: process.env.CATALOG_SERVICE_URL })
-      : undefined);
+    new CatalogClient({
+      baseUrl: process.env.CATALOG_SERVICE_URL || "http://127.0.0.1:4002",
+    });
 
   const resolvedIdentityClient =
     identityClient ??
-    (process.env.IDENTITY_SERVICE_URL
-      ? new IdentityClient({ baseUrl: process.env.IDENTITY_SERVICE_URL })
-      : undefined);
+    new IdentityClient({
+      baseUrl: process.env.IDENTITY_SERVICE_URL || "http://127.0.0.1:4001",
+    });
 
   return createFoundationApp(
     SERVICE_NAME,

@@ -24,7 +24,9 @@ export class HttpError extends Error {
 }
 
 export function loadServiceConfig(service, defaultPort, env = process.env) {
-  const host = env.HOST ?? "127.0.0.1";
+  const host =
+    env.HOST ??
+    (env.RENDER || env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
   if (
     typeof host !== "string" ||
     host.length === 0 ||

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=20 <25"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
-    "start": "node --env-file-if-exists=.env src/server.js",
+    "start": "node src/server.js",
     "build": "node --check src/app.js && node --check src/foundation.js && node --check src/database.js && node --check src/models.js && node --check src/server.js && node --check src/auth/jwt.js && node --check src/auth/cookies.js && node --check src/auth/middleware.js && node --check src/clients/catalogClient.js && node --check src/clients/identityClient.js && node --check src/recommendations/config.js && node --check src/recommendations/validation.js && node --check src/recommendations/eligibility.js && node --check src/recommendations/scoring.js && node --check src/recommendations/ranking.js && node --check src/routes/recommendations.js && node --check src/routes/compare.js && node --check src/routes/favorites.js && node --check src/routes/longevity.js && node --check src/routes/ai.js",
     "test": "node --test"
   },

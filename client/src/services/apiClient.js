@@ -24,7 +24,11 @@ export function resolveServiceUrl(path) {
   const catalogBase = getBaseUrl("VITE_CATALOG_URL");
   const recommendationBase = getBaseUrl("VITE_RECOMMENDATION_URL");
 
-  if (path.startsWith("/api/v1/auth") || path.startsWith("/api/v1/users")) {
+  if (
+    path.startsWith("/api/v1/auth") ||
+    path.startsWith("/api/v1/users") ||
+    path.startsWith("/api/v1/admin/users")
+  ) {
     return `${identityBase}${path}`;
   }
   if (path.startsWith("/api/v1/vehicles") || path.startsWith("/api/v1/admin/vehicles")) {

@@ -9,13 +9,14 @@
     "services/recommendation"
   ],
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=20 <25"
   },
   "scripts": {
     "dev:client": "npm run dev --workspace @vehicle/client",
     "dev:identity": "npm run dev --workspace @vehicle/identity-user",
     "dev:catalog": "npm run dev --workspace @vehicle/vehicle-catalog",
     "dev:recommendation": "npm run dev --workspace @vehicle/recommendation",
+    "start": "node server.js",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint client services test",
     "seed:catalog": "npm run seed --workspace @vehicle/vehicle-catalog",
