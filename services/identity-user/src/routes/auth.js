@@ -225,6 +225,16 @@ export function createAuthRouter({
       );
     }
 
+    if (user.isBlocked) {
+      return next(
+        new HttpError(
+          403,
+          "ACCOUNT_BLOCKED",
+          "This account has been blocked by an administrator.",
+        ),
+      );
+    }
+
     const accessToken = tokenService.signAccessToken(user);
     const session = await sessionService.createSession(user._id);
 
@@ -268,6 +278,16 @@ export function createAuthRouter({
       return next(new HttpError(401, "USER_NOT_FOUND", "Account not found."));
     }
 
+    if (user.isBlocked) {
+      return next(
+        new HttpError(
+          403,
+          "ACCOUNT_BLOCKED",
+          "This account has been blocked by an administrator.",
+        ),
+      );
+    }
+
     const accessToken = tokenService.signAccessToken(user);
     setAuthCookies(response, {
       accessToken,
@@ -300,11 +320,22 @@ export function createAuthRouter({
       return next(new HttpError(404, "USER_NOT_FOUND", "User account does not exist."));
     }
 
+    if (user.isBlocked) {
+      return next(
+        new HttpError(
+          403,
+          "ACCOUNT_BLOCKED",
+          "This account has been blocked by an administrator.",
+        ),
+      );
+    }
+
     return response.json({
       user: {
         id: user._id.toString(),
         email: user.email,
         role: user.role,
+        isBlocked: Boolean(user.isBlocked),
         profile: user.profile || {},
       },
     });

@@ -2369,5 +2369,257 @@ product features and database integration not started
 - `client` tests (`node --test`): All 27 tests passed.
 - `npm run build`: Production bundle built cleanly with Vite in 2.48s.
 
+## 2026-10-15 — Admin Inventory Cookie Resolution, Admin User Management, and AI Scanner Cooldown
+
+### Scope and objective
+
+1. **Admin Inventory Cookie Resolution**:
+   - Fixed cookie name mismatch in `services/vehicle-catalog/src/auth/cookies.js` and `services/vehicle-catalog/src/auth/middleware.js`. Supported `access_token`, `__Host-access_token`, and `accessToken` so the admin vehicle inventory page (`/admin`) resolves authentication credentials cleanly without 401 errors.
+2. **Admin User Management**:
+   - Added user directory listing (`GET /api/v1/admin/users`) and role/profile modification (`PATCH /api/v1/admin/users/:id`) in `services/identity-user/src/routes/admin.js`.
+   - Protected against demoting the last active administrator (`LAST_ADMIN_PROTECTED`).
+   - Added Vite proxy route for `/api/v1/admin/users` in `client/vite.config.js`.
+   - Created `client/src/services/adminUsersClient.js` for API consumption.
+   - Built `client/src/pages/AdminUsersPage.jsx` and `client/src/components/layout/AdminTabs.jsx` for navigating between Vehicle Inventory and User Management.
+   - Mounted `/admin/users` route in `client/src/App.jsx`.
+3. **AI Vehicle Scanner Cooldown Timer**:
+   - In `client/src/pages/AiScannerPage.jsx`, enforced a 15-second cooldown timer following every successful vehicle identification scan.
+   - Provided active countdown state on the identification action button (`AI Cooldown: Available in {cooldown}s...`) and disabled button clicks until the cooldown expires.
+
+### Implemented behavior and files changed
+
+1. **`services/vehicle-catalog/src/auth/cookies.js` & `middleware.js`**:
+   - Added `ACCESS_COOKIE_NAME` and `getCookieNames()` export.
+   - Checked `cookies[access] || cookies['__Host-access_token'] || cookies['access_token'] || cookies['accessToken']`.
+2. **`services/vehicle-catalog/test/admin.test.js`**:
+   - Added `ADM-08` test verifying cookie-based admin authentication using `access_token` and `__Host-access_token`.
+3. **`services/identity-user/src/routes/admin.js`**:
+   - Created admin router with `GET /api/v1/admin/users` and `PATCH /api/v1/admin/users/:id`.
+4. **`services/identity-user/src/app.js`**:
+   - Mounted `createAdminUsersRouter` at `/api/v1/admin/users`.
+5. **`services/identity-user/test/admin.test.js`**:
+   - Added 7 tests covering unauthenticated rejection (401), unauthorized regular user (403), pagination, search, role filtering, role promotion, last admin protection (409), and forbidden field rejection (400).
+6. **`client/vite.config.js`**:
+   - Added `/api/v1/admin/users` proxy rule.
+7. **`client/src/services/adminUsersClient.js`**:
+   - Created `listUsers` and `updateUser` API functions.
+8. **`client/src/components/layout/AdminTabs.jsx`**:
+   - Created unified tabs for "Vehicle Inventory" and "User Management".
+9. **`client/src/pages/AdminCatalogPage.jsx`**:
+   - Mounted `AdminTabs` and streamlined action header.
+10. **`client/src/pages/AdminUsersPage.jsx`**:
+    - Created user management directory table with role badge, joined date, search/role filter, and modify modal.
+11. **`client/src/App.jsx`**:
+    - Mounted `/admin/users` route.
+12. **`client/src/pages/AiScannerPage.jsx`**:
+    - Set 15-second countdown timer upon successful AI scan.
+    - Updated countdown button label and toast notifications.
+
+### Validation
+
+- `npm --prefix client run build`: Built with Vite in 4.00s with 0 errors.
+- `client` tests (`node --test`): 27/27 tests passed.
+- `identity-user` tests (`node --test`): 35/35 tests passed.
+- `vehicle-catalog` tests (`node --test`): 35/35 tests passed.
+- Total test suite: 146 tests passed, 0 failed.
+
+## 2026-10-15 — Full Catalog Schema Coverage in Admin Vehicle Creation Form
+
+### Scope and objective
+
+- Update the "Add New Vehicle Record" modal in the admin inventory management page (`AdminCatalogPage.jsx`) to expose every single field specified in the Vehicle catalog schema ([`services/vehicle-catalog/src/models.js`](file:///c:/Users/uttam/OneDrive/Desktop/practiceProject/Vehicle_Recom_Sys/services/vehicle-catalog/src/models.js) & [`validation.js`](file:///c:/Users/uttam/OneDrive/Desktop/practiceProject/Vehicle_Recom_Sys/services/vehicle-catalog/src/vehicles/validation.js)).
+- Provide sectioned navigation tabs inside the modal for high usability:
+  1. **Core Identity & Pricing**: Make, model, variant, year, body type, fuel type, transmission, seating capacity, initial status (`draft` / `published`), ex-showroom price, on-road price, used price.
+  2. **Technical Specifications & Safety**: Engine displacement, cylinders, power (hp), torque (Nm), claimed efficiency (km/l or km/kg), ground clearance (mm), boot space (litres), fuel tank capacity (litres), battery capacity (kWh), EV range (km), safety rating stars (0-5), safety agency name.
+  3. **Media & Provenance**: Hero image URL, additional gallery images, provenance provider, source documentation URL, license reference.
+- Correct provenance field mapping to send `retrievedAt` instead of `retrievalDate` to ensure strict schema conformance.
+
+### Implemented behavior and files changed
+
+1. **`client/src/pages/AdminCatalogPage.jsx`**:
+   - Defined complete form state (`INITIAL_CREATE_FORM`) and dropdown options for body types, fuel types, transmissions, status, mileage units, and safety star ratings.
+   - Built a 3-tab modal layout with step navigation controls and comprehensive field validations.
+   - Mapped all structured specifications (`engine`, `power`, `torque`, `claimedMileage`, `battery`, `range`, `groundClearance`, `bootSpace`, `fuelTankCapacity`, `safetyRating`), pricing tiers, media arrays, and audit provenance into the `POST /api/v1/admin/vehicles` payload.
+
+### Validation
+
+- `npm --prefix client run build`: Production bundle built cleanly with Vite in 8.29s (0 errors).
+- `client` tests (`node --test`): All 27 tests passed.
+- `vehicle-catalog` tests (`node --test`): All 35 tests passed.
+
+## 2026-10-15 — Admin User Management: User Blocking and Deletion Capabilities
+
+### Scope and objective
+
+- Support user blocking and deletion directly in the administrator user directory (`/admin/users`).
+- Enforce backend security controls:
+  - Add `isBlocked` boolean to the strict identity `userSchema`.
+  - Blocked users cannot log in (`/api/v1/auth/login`), refresh sessions (`/api/v1/auth/refresh`), or fetch user identity (`/api/v1/auth/me`), returning 403 `ACCOUNT_BLOCKED`.
+  - Blocking or deleting a user immediately revokes all their active sessions from the database (`models.Session.deleteMany({ userId })`).
+  - Protections prevent administrators from blocking or deleting their own account (`CANNOT_BLOCK_SELF`, `CANNOT_DELETE_SELF`).
+  - Protections prevent administrators from blocking or deleting the last remaining administrator in the system (`LAST_ADMIN_PROTECTED`).
+- Add user account status filtering (`all`, `active`, `blocked`) and interactive Block/Unblock and Delete controls in the UI.
+
+### Implemented behavior and files changed
+
+1. **`services/identity-user/src/models.js`**:
+   - Added `isBlocked: { type: Boolean, default: false, required: true }` to `userSchema`.
+2. **`services/identity-user/src/routes/auth.js`**:
+   - In `/api/v1/auth/login`: verifies `!user.isBlocked` before issuing tokens.
+   - In `/api/v1/auth/refresh`: verifies `!user.isBlocked` before rotating tokens.
+   - In `/api/v1/auth/me`: verifies `!user.isBlocked` and includes `isBlocked` status in response.
+3. **`services/identity-user/src/routes/admin.js`**:
+   - In `GET /api/v1/admin/users`: added `status` query filter (`active` or `blocked`) and formatted `isBlocked` in user objects.
+   - In `PATCH /api/v1/admin/users/:id`: allow updating `isBlocked` (boolean), revokes all active sessions when blocking, and enforces self and last-admin protections.
+   - In `DELETE /api/v1/admin/users/:id`: permanently deletes user record, revokes all sessions, and enforces self and last-admin protections.
+4. **`services/identity-user/test/admin.test.js`**:
+   - Added `ADM-USER-08`: admin can block a user; session deleted; blocked user rejected with 403 `ACCOUNT_BLOCKED` on login.
+   - Added `ADM-USER-09`: admin cannot block themselves or the last active admin.
+   - Added `ADM-USER-10`: admin can unblock a previously blocked user.
+   - Added `ADM-USER-11`: admin can delete a user; sessions deleted; user record deleted.
+   - Added `ADM-USER-12`: admin cannot delete themselves or the last remaining admin.
+5. **`client/src/services/adminUsersClient.js`**:
+   - Added `deleteUser(userId)` method calling `apiClient.delete(...)`.
+6. **`client/src/pages/AdminUsersPage.jsx`**:
+   - Added Status filter (`All Statuses`, `Active`, `Blocked`).
+   - Added Status badge in the directory table (`ACTIVE` in green, `BLOCKED` in red).
+   - Added interactive `Block` / `Unblock` button with session revocation warning and confirmation dialog.
+   - Added `Delete` button with permanent deletion confirmation dialog.
+   - Disabled block and delete buttons on the admin's own row (`isSelf`).
+   - Added account block toggle in the "Modify User" modal.
+
+### Validation
+
+- `identity-user` tests (`node --test`): 40/40 tests passed (including all 12 ADM-USER tests).
+- `client` tests (`node --test`): 27/27 tests passed.
+- `vehicle-catalog` tests (`node --test`): 35/35 tests passed.
+- `recommendation` tests (`node --test`): 49/49 tests passed.
+- Global test suite (`npm test`): 151/151 tests passed, 0 failures.
+- `npm --prefix client run build`: Vite production build passed cleanly in 3.87s with 0 errors.
+
+## 2026-10-15 — Searchbar: Car Name Search with Debouncing
+
+### Scope and objective
+
+- Optimize the vehicle searchbar so users search specifically for car names (e.g., model and make like "Nexon", "Creta", "Swift", "Tata Nexon").
+- Implement client-side input debouncing (350ms delay) so network queries are not fired on every keystroke.
+- Support immediate execution on pressing `Enter`, instant clearing with the `X` button, and automatic synchronization when filters reset.
+- Support full car name matching in backend query construction (concatenating make + model) so compound queries like "Maruti Swift" or "Tata Nexon" match accurately.
+
+### Implemented behavior and files changed
+
+1. **`client/src/components/catalog/VehicleFilters.jsx`**:
+   - Replaced un-debounced input with dedicated car name search component utilizing `useDebounce(searchInput, 350)`.
+   - Updated search label to "Search Car Name" and placeholder to "e.g. Nexon, Creta, Swift...".
+   - Added clear button (`FiX`), instant `Enter` key trigger, and animated "Searching..." indicator while debounce is active.
+   - Synchronized `searchInput` state with external `filters.q` changes (e.g. on Reset button click).
+2. **`client/src/pages/HomePage.jsx`**:
+   - Updated hero quick searchbar placeholder to "Search car name (e.g. Nexon, Creta, Swift)...".
+3. **`services/vehicle-catalog/src/routes/public.js`**:
+   - Extended `$or` query construction with `$expr: { $regexMatch: { input: { $concat: ["$make", " ", "$model"] }, regex: escaped, options: "i" } }` to match both individual car models and full car names (e.g. "Maruti Swift").
+4. **`services/vehicle-catalog/test/public.test.js`**:
+   - Added test assertion in `SRCH-01` verifying search by full car name `Maruti Swift`.
+
+### Validation
+
+- `client` tests (`node --test`): 27/27 passed.
+- `vehicle-catalog` tests (`node --test`): 35/35 passed.
+- Global test suite (`npm test`): 151/151 passed.
+- `npm --prefix client run build`: Built with Vite in 1.57s with 0 errors.
+
+## 2026-10-15 — Visual Design: Theme Palette Custom Scrollbars
+
+### Scope and objective
+
+- Customize the scrollbar appearance across the entire application (page root, modals, tables, dropdowns, code containers) to match the approved brand palette (`#0A0A0A`, `#2B2B2B`, `#1F5A3A`, `#D8FF2A`, `#F5F5F5`).
+- Follow modern web best practice guidance (`customize-scrollbar-color-and-thickness`) using standard W3C CSS properties (`scrollbar-color`, `scrollbar-width: thin`) alongside WebKit/Chromium/Safari pseudo-element fallbacks.
+- Provide adaptive light and dark mode colors:
+  - **Light mode**: Forest green thumb (`#1F5A3A`) with subtle forest tint track (`rgba(31, 90, 58, 0.08)`) and hover darkening (`#27724a`).
+  - **Dark mode**: Forest green thumb (`#1F5A3A`) hovering to lime (`#D8FF2A`) with deep obsidian/charcoal track (`#141414`).
+  - Pill-shaped thumb with floating inset border (`background-clip: padding-box`).
+
+### Implemented behavior and files changed
+
+1. **`client/src/index.css`**:
+   - Declared `--scrollbar-thumb`, `--scrollbar-thumb-hover`, and `--scrollbar-track` under `:root` and `.dark`.
+   - Applied `scrollbar-width: thin` and `scrollbar-color` across `*`, `html`, and `body`.
+   - Added styled `::-webkit-scrollbar`, `::-webkit-scrollbar-track`, `::-webkit-scrollbar-thumb`, and `::-webkit-scrollbar-corner` rules with floating padding and transitions.
+
+### Validation
+
+- `client` tests (`node --test`): 27/27 passed.
+- `npm --prefix client run build`: Vite production bundle built cleanly in 2.83s with 0 errors.
+
+## 2026-10-15 — Vehicle Comparison: User-Scoped Storage and Session Isolation
+
+### Scope and objective
+
+- Fix vehicle comparison isolation across user accounts. Previously, compared vehicle IDs (`vehicle_compare_ids`) and generated AI comparison verdicts (`vehicle_compare_verdict`) were stored globally in un-scoped `localStorage` keys, causing newly logged-in accounts to inherit the previous user's or guest's comparison selections.
+- Implement strict user-scoped local storage keys (`vehicle_compare_ids_${userId}` and `vehicle_compare_verdict_${userId}`).
+- When unauthenticated (guest browsing), comparison items are scoped to `vehicle_compare_ids_guest` and `vehicle_compare_verdict_guest`.
+- Automatically purge stale legacy un-scoped keys (`vehicle_compare_ids` and `vehicle_compare_verdict`) to prevent stale data leakage.
+- Integrate with `AuthContext` so comparison storage synchronizes user identity upon mount, login, registration, and session check, and clears stored user comparisons on logout.
+- In `ComparePage`, detect user identity switching: if a user logs into a different account with no comparisons, automatically reset stale comparison query strings from the URL (`navigate('/compare', { replace: true })`).
+
+### Implemented behavior and files changed
+
+1. **`client/src/services/compareStorage.js`**:
+   - Added `setCompareStorageUser(userId)` to set active user ID in storage module.
+   - Replaced static key constants with user-scoped key resolver functions `getIdsKey(userId)` and `getVerdictKey(userId)`.
+   - Added legacy key purging on both read and write operations.
+   - Updated all compare storage operations (`getStoredCompareIds`, `saveStoredCompareIds`, `clearStoredCompareIds`, `addVehicleToCompare`, `removeVehicleFromCompare`, `getStoredVerdict`, `saveStoredVerdict`, `clearStoredVerdict`) to take an optional `userIdArg` parameter falling back to active user.
+2. **`client/src/context/AuthContext.jsx`**:
+   - Synchronizes `setCompareStorageUser(res.user?.id)` on `getMe`, `checkAuth`, `login`, and `register`.
+   - On `logout`: calls `clearStoredCompareIds(user?.id)`, `clearStoredVerdict(user?.id)`, and `setCompareStorageUser(null)`.
+3. **`client/src/pages/ComparePage.jsx`**:
+   - `vehicleIds` computation passes `user?.id` to `getStoredCompareIds(user?.id)`.
+   - Added `lastUserIdRef` tracking in `useEffect`: resets the route to clean `/compare` via `navigate(pathname, { replace: true })` when switching to a user account that has no comparison vehicles stored.
+   - Updated `updateUrlIds`, `handleRemove`, and verdict caching/clearing handlers to pass `user?.id`.
+4. **`client/test/compareStorage.test.js`**:
+   - Added test verifying that different user IDs have completely isolated comparison lists.
+   - Added test verifying that legacy un-scoped keys are purged and never leak to new users.
+
+### Validation
+
+- `client` tests (`node --test client/test/*.test.js`): 29/29 passed (including 2 new user isolation tests).
+- `services/identity-user` tests (`node --test`): 40/40 passed.
+- `services/vehicle-catalog` tests (`node --test`): 35/35 passed.
+- `services/recommendation` tests (`node --test`): 49/49 passed.
+- Total tests executed across repository: 153/153 passed (0 failures).
+- `npm --prefix client run build`: Vite production bundle built cleanly in 7.73s with 0 errors.
+
+## 2026-10-15 — Admin UI: Custom Confirmation Dialog Modals
+
+### Scope and objective
+
+- Replace all native browser confirmation dialogs (`window.confirm` and `window.alert`) with custom, accessible, theme-integrated confirmation modal popups (`ConfirmModal`).
+- Applied to administrative user management (`/admin/users`) for:
+  - **Blocking users**: displays session revocation warning, target email, amber badge/icon, and action cancellation.
+  - **Unblocking users**: displays account restoration notice, target email, emerald badge/icon, and reactivation confirmation.
+  - **Deleting users**: displays critical permanent deletion warning, target email, red badge/icon, and irreversible operation notice.
+- Applied to administrative catalog management (`/admin/catalog`) for:
+  - **Deleting vehicle records**: displays vehicle make, model, variant, and permanent removal warning.
+
+### Implemented behavior and files changed
+
+1. **`client/src/components/ui/ConfirmModal.jsx`**:
+   - Created reusable modal confirmation component extending `Modal`.
+   - Supports `danger`, `warning`, and `primary` action variants with matching branded icon chips, title, message/children description, and busy/loading state with spinner.
+2. **`client/src/pages/AdminUsersPage.jsx`**:
+   - Replaced native `window.confirm` calls in `promptToggleBlock` and `promptDeleteUser` with reactive `confirmAction` modal state.
+   - Added asynchronous `handleExecuteConfirmAction` supporting loading states, toasts, and list refresh.
+3. **`client/src/pages/AdminCatalogPage.jsx`**:
+   - Replaced native `window.confirm` in `handleDelete` with `vehicleToDelete` modal state and `ConfirmModal`.
+4. **`client/vite.config.js`**:
+   - Enhanced Vite proxy configuration with `onError` event logging to surface detailed connection refusal diagnostics when backend services are down.
+
+### Validation
+
+- `client` tests (`node --test client/test/*.test.js`): 29/29 passed.
+- `npm --prefix client run build`: Vite production bundle built cleanly in 1.36s with 0 errors.
+- Verification for `window.confirm` / `alert` calls: 0 occurrences remaining in frontend source.
+
+
+
 
 

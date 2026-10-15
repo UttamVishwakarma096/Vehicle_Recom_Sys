@@ -153,13 +153,13 @@ export function AiScannerPage() {
   const [dragActive, setDragActive] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  // Rate limiter cooldown countdown timer (refills token in 15 seconds)
+  // Rate limiter / post-scan cooldown countdown timer (refills token in 15 seconds)
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) {
-          toast.info("Token refilled! You can scan a vehicle now.", "Token Ready");
+          toast.info("AI Scanner ready! You can scan a vehicle now.", "Ready to Scan");
           setError(null);
           return 0;
         }
@@ -240,8 +240,9 @@ export function AiScannerPage() {
       });
 
       setResult(response);
+      setCooldown(15);
       toast.success(
-        `Identified: ${response.identification.make} ${response.identification.model}!`,
+        `Identified: ${response.identification.make} ${response.identification.model}! Next scan available in 15s.`,
         "Vehicle Identified",
       );
     } catch (err) {
@@ -490,7 +491,7 @@ export function AiScannerPage() {
                   "Analyzing Visual Features..."
                 ) : cooldown > 0 ? (
                   <span className="inline-flex items-center gap-1.5 font-mono">
-                    <span>Token Bucket Empty: Refilling ({cooldown}s)...</span>
+                    <span>AI Cooldown: Available in {cooldown}s...</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">

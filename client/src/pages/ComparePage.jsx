@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "../router/Router.jsx";
 import { useLocation, useNavigate } from "../router/hooks.js";
 import { recommendationClient } from "../services/recommendationClient.js";
@@ -35,35 +35,49 @@ export function ComparePage() {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const vehicleIds = useMemo(() => {
     const params = new URLSearchParams(
       search || (typeof window !== "undefined" ? window.location.search : "")
     );
     if (!params.has("ids")) {
-      return getStoredCompareIds();
+      return getStoredCompareIds(user?.id);
     }
     const ids = params.get("ids");
     return ids ? ids.split(",").filter(Boolean) : [];
-  }, [search]);
+  }, [search, user?.id]);
 
-  // Sync URL search params with localStorage to persist selected vehicles
+  // Handle user account switching: if user changed, reload their specific stored vehicles
+  const lastUserIdRef = useRef(user?.id);
+  useEffect(() => {
+    if (lastUserIdRef.current !== undefined && lastUserIdRef.current !== user?.id) {
+      const stored = getStoredCompareIds(user?.id);
+      if (stored.length > 0) {
+        navigate(`${pathname}?ids=${stored.join(",")}`, { replace: true });
+      } else {
+        navigate(pathname, { replace: true });
+      }
+    }
+    lastUserIdRef.current = user?.id;
+  }, [user?.id, pathname, navigate]);
+
+  // Sync URL search params with localStorage for current user
   useEffect(() => {
     const params = new URLSearchParams(
       search || (typeof window !== "undefined" ? window.location.search : "")
     );
     if (!params.has("ids")) {
-      const stored = getStoredCompareIds();
+      const stored = getStoredCompareIds(user?.id);
       if (stored.length > 0) {
         navigate(`${pathname}?ids=${stored.join(",")}`, { replace: true });
       }
     } else {
       const ids = params.get("ids");
       const parsed = ids ? ids.split(",").filter(Boolean) : [];
-      saveStoredCompareIds(parsed);
+      saveStoredCompareIds(parsed, user?.id);
     }
-  }, [search, pathname, navigate]);
+  }, [search, pathname, navigate, user?.id]);
 
   const [compareData, setCompareData] = useState(null);
   const [loading, setLoading] = useState(() => vehicleIds.length >= 2);
@@ -114,7 +128,7 @@ export function ComparePage() {
           setLoading(false);
 
           // Restore saved conclusion if one was previously generated for these vehicles
-          const saved = getStoredVerdict(vehicleIds);
+          const saved = getStoredVerdict(vehicleIds, user?.id);
           if (saved) {
             setConclusionData(saved.conclusion);
             setAppliedPreferences(saved.appliedPreferences || "");
@@ -139,26 +153,26 @@ export function ComparePage() {
   }, [vehicleIds, isAuthenticated]);
 
   const updateUrlIds = (newIds) => {
-    const saved = getStoredVerdict(newIds);
+    const saved = getStoredVerdict(newIds, user?.id);
     if (saved) {
       setConclusionData(saved.conclusion);
       setAppliedPreferences(saved.appliedPreferences || "");
     } else {
       setConclusionData(null);
       setAppliedPreferences("");
-      clearStoredVerdict();
+      clearStoredVerdict(user?.id);
     }
     setConclusionError(null);
     if (newIds.length >= 2) {
       setLoading(true);
     }
     if (newIds.length > 0) {
-      saveStoredCompareIds(newIds);
+      saveStoredCompareIds(newIds, user?.id);
       navigate(`${pathname}?ids=${newIds.join(",")}`);
     } else {
-      clearStoredCompareIds();
-      clearStoredVerdict();
-      navigate(pathname);
+      clearStoredCompareIds(user?.id);
+      clearStoredVerdict(user?.id);
+      navigate(pathname, { replace: true });
     }
   };
 
@@ -201,12 +215,15 @@ export function ComparePage() {
       if (res?.conclusion) {
         setConclusionData(res.conclusion);
         setAppliedPreferences(userPreferences.trim());
-        saveStoredVerdict({
-          vehicleIds,
-          conclusion: res.conclusion,
-          userPreferences: userPreferences.trim(),
-          appliedPreferences: userPreferences.trim(),
-        });
+        saveStoredVerdict(
+          {
+            vehicleIds,
+            conclusion: res.conclusion,
+            userPreferences: userPreferences.trim(),
+            appliedPreferences: userPreferences.trim(),
+          },
+          user?.id
+        );
         toast.success("AI comparative conclusion generated successfully!", "Verdict Ready");
       }
     } catch (err) {

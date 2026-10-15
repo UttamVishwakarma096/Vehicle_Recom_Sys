@@ -273,6 +273,13 @@ test("SRCH-01: search and filter dimensions combine with AND", async () => {
   assert.equal(manualRes.status, 200);
   const manualData = await manualRes.json();
   assert.equal(manualData.items.length, 2); // Nexon and Swift
+
+  // Search by full car name 'Maruti Swift'
+  const fullCarNameRes = await fetch(`${baseUrl}/api/v1/vehicles?q=Maruti%20Swift`);
+  assert.equal(fullCarNameRes.status, 200);
+  const fullCarNameData = await fullCarNameRes.json();
+  assert.equal(fullCarNameData.items.length, 1);
+  assert.equal(fullCarNameData.items[0].model, "Swift");
 });
 
 // SRCH-02: FR-SEARCH-01 - Price range and priceType filtering with inclusive bounds

@@ -336,9 +336,18 @@ export function createPublicRoutes({ models }) {
       if (q) {
         const escaped = escapeRegex(q);
         mongoQuery.$or = [
-          { make: new RegExp(escaped, "i") },
           { model: new RegExp(escaped, "i") },
+          { make: new RegExp(escaped, "i") },
           { variant: new RegExp(escaped, "i") },
+          {
+            $expr: {
+              $regexMatch: {
+                input: { $concat: ["$make", " ", "$model"] },
+                regex: escaped,
+                options: "i",
+              },
+            },
+          },
         ];
       }
 

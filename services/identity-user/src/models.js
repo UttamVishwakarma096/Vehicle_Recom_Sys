@@ -14,6 +14,7 @@ export function registerModels(connection) {
       },
       passwordHash: { type: String, required: true, select: false },
       role: { type: String, enum: ["user", "admin"], default: "user", required: true },
+      isBlocked: { type: Boolean, default: false, required: true },
       profile: { type: Schema.Types.Mixed, default: undefined },
       preferences: { type: Schema.Types.Mixed, default: () => ({}) },
     },

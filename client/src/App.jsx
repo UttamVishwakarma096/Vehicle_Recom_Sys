@@ -9,6 +9,7 @@ import { RegisterPage } from "./pages/RegisterPage.jsx";
 import { CatalogPage } from "./pages/CatalogPage.jsx";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage.jsx";
 import { AdminCatalogPage } from "./pages/AdminCatalogPage.jsx";
+import { AdminUsersPage } from "./pages/AdminUsersPage.jsx";
 import { RecommendationPage } from "./pages/RecommendationPage.jsx";
 import { ComparePage } from "./pages/ComparePage.jsx";
 import { FavoritesPage } from "./pages/FavoritesPage.jsx";
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/compare" component={ComparePage} />
               <Route path="/favorites" component={FavoritesPage} />
               <Route path="/admin" component={AdminCatalogPage} />
+              <Route path="/admin/users" component={AdminUsersPage} />
             </AppLayout>
           </ToastProvider>
         </AuthProvider>

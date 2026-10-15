@@ -1,5 +1,5 @@
 import { HttpError } from "../foundation.js";
-import { parseCookies, COOKIE_NAME_ACCESS } from "./cookies.js";
+import { parseCookies, getCookieNames, ACCESS_COOKIE_NAME, COOKIE_NAME_ACCESS } from "./cookies.js";
 
 export function createAuthMiddleware({ tokenVerifier } = {}) {
   return function authenticate({ optional = false } = {}) {
@@ -13,9 +13,12 @@ export function createAuthMiddleware({ tokenVerifier } = {}) {
 
       if (!token) {
         const cookies = parseCookies(request);
-        if (cookies[COOKIE_NAME_ACCESS]) {
-          token = cookies[COOKIE_NAME_ACCESS];
-        }
+        const { access } = getCookieNames();
+        token =
+          cookies[access] ||
+          cookies[`__Host-${ACCESS_COOKIE_NAME}`] ||
+          cookies[ACCESS_COOKIE_NAME] ||
+          cookies[COOKIE_NAME_ACCESS];
       }
 
       if (!token) {

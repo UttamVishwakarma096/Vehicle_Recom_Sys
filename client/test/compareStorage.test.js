@@ -114,3 +114,19 @@ test("clearStoredVerdict clears saved verdict", () => {
   clearStoredVerdict();
   assert.equal(getStoredVerdict(["id1", "id2"]), null);
 });
+
+test("different user IDs have completely isolated comparison lists", () => {
+  saveStoredCompareIds(["id1", "id2"], "userA");
+  assert.deepEqual(getStoredCompareIds("userA"), ["id1", "id2"]);
+  assert.deepEqual(getStoredCompareIds("userB"), []);
+
+  saveStoredCompareIds(["id3"], "userB");
+  assert.deepEqual(getStoredCompareIds("userA"), ["id1", "id2"]);
+  assert.deepEqual(getStoredCompareIds("userB"), ["id3"]);
+});
+
+test("legacy un-scoped keys are purged so they never leak to new users", () => {
+  mockStorage.set("vehicle_compare_ids", JSON.stringify(["old1", "old2"]));
+  assert.deepEqual(getStoredCompareIds("userB"), []);
+  assert.equal(mockStorage.has("vehicle_compare_ids"), false);
+});

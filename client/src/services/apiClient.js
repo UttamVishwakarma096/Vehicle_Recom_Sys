@@ -9,6 +9,39 @@ export class ApiError extends Error {
   }
 }
 
+function getBaseUrl(envKey) {
+  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[envKey]) {
+    return import.meta.env[envKey];
+  }
+  if (typeof process !== "undefined" && process.env && process.env[envKey]) {
+    return process.env[envKey];
+  }
+  return "";
+}
+
+export function resolveServiceUrl(path) {
+  const identityBase = getBaseUrl("VITE_IDENTITY_URL");
+  const catalogBase = getBaseUrl("VITE_CATALOG_URL");
+  const recommendationBase = getBaseUrl("VITE_RECOMMENDATION_URL");
+
+  if (path.startsWith("/api/v1/auth") || path.startsWith("/api/v1/users")) {
+    return `${identityBase}${path}`;
+  }
+  if (path.startsWith("/api/v1/vehicles") || path.startsWith("/api/v1/admin/vehicles")) {
+    return `${catalogBase}${path}`;
+  }
+  if (
+    path.startsWith("/api/v1/recommendations") ||
+    path.startsWith("/api/v1/compare") ||
+    path.startsWith("/api/v1/favorites") ||
+    path.startsWith("/api/v1/longevity") ||
+    path.startsWith("/api/v1/ai")
+  ) {
+    return `${recommendationBase}${path}`;
+  }
+  return path;
+}
+
 class ApiClient {
   constructor() {
     this.csrfToken = null;
@@ -44,7 +77,7 @@ class ApiClient {
       requestHeaders["X-CSRF-Token"] = this.csrfToken;
     }
 
-    const response = await fetch(path, {
+    const response = await fetch(resolveServiceUrl(path), {
       method,
       headers: requestHeaders,
       credentials: "include", // send cookies
@@ -79,7 +112,7 @@ class ApiClient {
         !options._isRetry
       ) {
         try {
-          const refreshRes = await fetch("/api/v1/auth/refresh", {
+          const refreshRes = await fetch(resolveServiceUrl("/api/v1/auth/refresh"), {
             method: "POST",
             headers: { Accept: "application/json" },
             credentials: "include",

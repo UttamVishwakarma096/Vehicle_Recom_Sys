@@ -1,4 +1,11 @@
+export const ACCESS_COOKIE_NAME = "access_token";
 export const COOKIE_NAME_ACCESS = "accessToken";
+
+export function getCookieNames(isProduction = process.env.NODE_ENV === "production") {
+  return {
+    access: isProduction ? `__Host-${ACCESS_COOKIE_NAME}` : ACCESS_COOKIE_NAME,
+  };
+}
 
 export function parseCookies(request) {
   const cookieHeader = request.headers.cookie;

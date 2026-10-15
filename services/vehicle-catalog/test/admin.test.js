@@ -602,3 +602,23 @@ test("malformed vehicle ID returns safe 400 INVALID_IDENTIFIER", async () => {
   const adminJson = await malformedAdminRes.json();
   assert.equal(adminJson.error.code, "INVALID_IDENTIFIER");
 });
+
+test("ADM-08: admin can authenticate via access_token and __Host-access_token cookie", async () => {
+  // Test access_token cookie
+  const cookieRes = await fetch(`${baseUrl}/api/v1/admin/vehicles`, {
+    headers: {
+      Cookie: `access_token=${adminToken}`,
+    },
+  });
+  assert.equal(cookieRes.status, 200);
+  const cookieJson = await cookieRes.json();
+  assert.ok(Array.isArray(cookieJson.items));
+
+  // Test __Host-access_token cookie
+  const hostCookieRes = await fetch(`${baseUrl}/api/v1/admin/vehicles`, {
+    headers: {
+      Cookie: `__Host-access_token=${adminToken}`,
+    },
+  });
+  assert.equal(hostCookieRes.status, 200);
+});

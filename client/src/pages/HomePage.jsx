@@ -207,7 +207,7 @@ export function HomePage() {
                   setSearchQuery(e.target.value);
                   setIsSearchDropdownOpen(true);
                 }}
-                placeholder="Search make, model, or type (e.g. Nexon, EV)..."
+                placeholder="Search car name (e.g. Nexon, Creta, Swift)..."
                 className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-transparent text-sm font-medium text-[#0A0A0A] dark:text-[#F5F5F5] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
               />
               {searchQuery && (

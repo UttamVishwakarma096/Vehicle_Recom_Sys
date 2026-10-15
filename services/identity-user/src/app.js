@@ -5,6 +5,7 @@ import { createAuthMiddleware } from "./auth/middleware.js";
 import { createServiceAuthMiddleware } from "./auth/serviceAuth.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createUsersRouter } from "./routes/users.js";
+import { createAdminUsersRouter } from "./routes/admin.js";
 import { createInternalUsersRouter } from "./routes/internal.js";
 import { TokenBucketRateLimiter } from "./rateLimit.js";
 
@@ -76,6 +77,14 @@ export function createApp({
 
       app.use(
         createUsersRouter({
+          models,
+          authenticate,
+        }),
+      );
+
+      app.use(
+        "/api/v1/admin/users",
+        createAdminUsersRouter({
           models,
           authenticate,
         }),
