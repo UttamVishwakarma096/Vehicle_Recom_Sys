@@ -20,9 +20,9 @@ function getBaseUrl(envKey) {
 }
 
 export function resolveServiceUrl(path) {
-  const identityBase = getBaseUrl("VITE_IDENTITY_URL");
-  const catalogBase = getBaseUrl("VITE_CATALOG_URL");
-  const recommendationBase = getBaseUrl("VITE_RECOMMENDATION_URL");
+  const identityBase = getBaseUrl("https://vehicle-recom-sys-identity-user.onrender.com");
+  const catalogBase = getBaseUrl("https://vehicle-recom-sys-vehicle-catelog.onrender.com");
+  const recommendationBase = getBaseUrl("https://vehicle-recom-sys-recommendation.onrender.com");
 
   if (
     path.startsWith("/api/v1/auth") ||
