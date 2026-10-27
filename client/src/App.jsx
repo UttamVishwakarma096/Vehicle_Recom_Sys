@@ -20,7 +20,7 @@ export default function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
+          <ToastProvider position="top-center">
             <AppLayout>
               <Route path="/" component={HomePage} />
               <Route path="/login" component={LoginPage} />

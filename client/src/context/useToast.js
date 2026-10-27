@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { sileo } from "sileo";
 import { ToastContext } from "./toastContextDef.js";
 
 export function useToast() {
@@ -8,3 +9,5 @@ export function useToast() {
   }
   return context;
 }
+
+export { sileo };

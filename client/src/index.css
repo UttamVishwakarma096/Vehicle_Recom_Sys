@@ -188,3 +188,83 @@
     box-shadow: 0 0 0 3px rgba(216, 255, 42, 0.25);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Sileo Toast - Reverted Palette with Highlighted Border                      */
+/* -------------------------------------------------------------------------- */
+
+/* Light Theme: Clean White Surface with Highlighted Border */
+html:not(.dark) [data-sileo-toast] [data-sileo-pill],
+html:not(.dark) [data-sileo-toast] [data-sileo-body] {
+  fill: #FFFFFF !important;
+}
+
+html:not(.dark) [data-sileo-toast] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px rgba(31, 90, 58, 0.55))
+    drop-shadow(0 0 1.5px rgba(31, 90, 58, 0.3))
+    drop-shadow(0 10px 25px rgba(10, 10, 10, 0.10));
+}
+
+html:not(.dark) [data-sileo-toast][data-state="error"] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px rgba(225, 29, 72, 0.6))
+    drop-shadow(0 0 1.5px rgba(225, 29, 72, 0.3))
+    drop-shadow(0 10px 25px rgba(10, 10, 10, 0.10));
+}
+
+html:not(.dark) [data-sileo-toast][data-state="warning"] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px rgba(217, 119, 6, 0.6))
+    drop-shadow(0 0 1.5px rgba(217, 119, 6, 0.3))
+    drop-shadow(0 10px 25px rgba(10, 10, 10, 0.10));
+}
+
+html:not(.dark) [data-sileo-toast] [data-sileo-description] {
+  color: #374151 !important;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* Dark Theme: Clean Obsidian/Charcoal Surface with Highlighted Border */
+html.dark [data-sileo-toast] [data-sileo-pill],
+html.dark [data-sileo-toast] [data-sileo-body] {
+  fill: #18181B !important;
+}
+
+html.dark [data-sileo-toast] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px #D8FF2A)
+    drop-shadow(0 0 2px rgba(216, 255, 42, 0.45))
+    drop-shadow(0 12px 36px rgba(0, 0, 0, 0.75));
+}
+
+html.dark [data-sileo-toast][data-state="error"] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px #FB7185)
+    drop-shadow(0 0 2px rgba(251, 113, 133, 0.45))
+    drop-shadow(0 12px 36px rgba(0, 0, 0, 0.75));
+}
+
+html.dark [data-sileo-toast][data-state="warning"] [data-sileo-canvas] {
+  filter: 
+    drop-shadow(0 0 1px #FBBF24)
+    drop-shadow(0 0 2px rgba(251, 191, 36, 0.45))
+    drop-shadow(0 12px 36px rgba(0, 0, 0, 0.75));
+}
+
+html.dark [data-sileo-toast] [data-sileo-description] {
+  color: #E5E7EB !important;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* Typography polish */
+[data-sileo-toast] [data-sileo-title] {
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+

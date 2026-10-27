@@ -2708,11 +2708,36 @@ product features and database integration not started
 - Live Render endpoint verification:
   - `https://vehicle-recom-sys-identity-user.onrender.com/health/ready` -> HTTP 200 OK.
   - `https://vehicle-recom-sys-vehicle-catelog.onrender.com/health/ready` -> HTTP 200 OK.
-  - `https://vehicle-recom-sys-recommendation.onrender.com/health/ready` -> HTTP 200 OK.
+  - `https://vehicle-recom-sys-recommendation.onrender.com/health/ready` -> HTTP 200 OK.## 2026-10-27 — Sileo React Toast Component Integration
 
+### Objective
+Integrate the `sileo` physics-based React toast notification library into the frontend, replacing custom toast overlays while maintaining 100% backward compatibility with existing `useToast()` helper signatures and supporting modern spring physics and gooey SVG morphing animations.
 
+### Implemented behavior and files changed
+1. **`client/package.json`**:
+   - Added `sileo` (`^0.1.6`) dependency.
+2. **`client/src/context/ToastContext.jsx`**:
+   - Replaced legacy DOM toast overlay with Sileo's `<Toaster />` component.
+   - Configured position to `top-center` for centered notifications.
+   - Synchronized current active theme with `isDark` boolean and dynamic `options.fill` (`#2B2B2B` Charcoal for dark mode, `#FFFFFF` for light mode).
+   - Connected `sileo` API methods (`success`, `error`, `warning`, `info`, `action`, `promise`, `remove`, `dismiss`, `clear`, `show`).
+3. **`client/src/index.css`**:
+   - Reverted toast inner elements (state badges, titles, buttons) back to Sileo's original color scheme.
+   - Preserved neutral theme backgrounds (`#18181B` for dark mode, `#FFFFFF` for light mode).
+   - Applied highlighted contour border to the Sileo toast shape (`#D8FF2A` Cyber Lime highlight for dark mode, `#1F5A3A` Forest Green highlight for light mode, with matching error/warning state borders).
+4. **`client/src/App.jsx`**:
+   - Passed `position="top-center"` to `<ToastProvider />`.
+5. **`client/src/context/toastFormatter.js`**:
+   - Implemented argument normalization supporting both legacy calls (`(message, title, extraOpts)`) and Sileo options object (`{ title, description, duration, ... }`).
+4. **`client/src/context/useToast.js`**:
+   - Re-exported `sileo` directly alongside `useToast`.
+5. **`client/test/toast.test.js`**:
+   - Added 5 unit test cases covering argument normalization, short/long string formatting, and direct options passthrough.
 
-
+### Validation
+- `npm test --workspace @vehicle/client`: 34/34 tests passed.
+- `npm run build --workspace @vehicle/client`: Vite build succeeded in 1.75s with zero errors.
+- `npx eslint client/src/context client/test/toast.test.js`: 0 errors, 0 warnings.
 
 
 
